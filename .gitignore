@@ -1,0 +1,10 @@
+.erlang.mk/
+c_src/env.mk
+*.beam
+.cache/
+ebin/
+*.sw[op]
+*.d
+priv/*.so
+*.o
+compile_commands.json
