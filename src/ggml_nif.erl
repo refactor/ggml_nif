@@ -5,6 +5,7 @@
 -export([init/1]).
 -export([new_tensor_f32_2d/3]).
 -export([new_tensor_f32_1d/2]).
+-export([tensor_load/2]).
 -export([tensor_set_f32/2]).
 -export([add/3]).
 -export([mul/3]).
@@ -16,12 +17,15 @@
 -export([set_param/1]).
 -export([nbytes/1]).
 -export([set_name/2]).
+-export([get_data/1]).
+-export([f32_sizef/0]).
 
 -export_type([my_context/0, my_tensor/0]).
 
 -nifs([hello/1]).
 -nifs([new_tensor_f32_2d/3]).
 -nifs([new_tensor_f32_1d/2]).
+-nifs([tensor_load/2]).
 -nifs([tensor_set_f32/2]).
 -nifs([add/3]).
 -nifs([mul/3]).
@@ -33,6 +37,8 @@
 -nifs([set_param/1]).
 -nifs([nbytes/1]).
 -nifs([set_name/2]).
+-nifs([get_data/1]).
+-nifs([f32_sizef/0]).
 -nifs([init/1]).
 
 -opaque my_context() :: reference().
@@ -53,6 +59,10 @@ new_tensor_f32_2d(_Ctx, _NE0, _NE1) ->
 
 -spec new_tensor_f32_1d(my_context(), non_neg_integer()) -> my_tensor().
 new_tensor_f32_1d(_Ctx, _NE) ->
+    erlang:nif_error("NIF library not loaded").
+
+-spec tensor_load(my_tensor(), binary()) -> ok.
+tensor_load(_T, _Bin) ->
     erlang:nif_error("NIF library not loaded").
 
 -spec tensor_set_f32(my_tensor(), float()) -> my_tensor().
@@ -97,6 +107,14 @@ nbytes(_T) ->
 
 -spec set_name(my_tensor(), string()) -> ok.
 set_name(_T, _Name) ->
+    erlang:nif_error("NIF library not loaded").
+
+-spec get_data(my_tensor()) -> binary().
+get_data(_T) ->
+    erlang:nif_error("NIF library not loaded").
+
+-spec f32_sizef() -> float().
+f32_sizef() ->
     erlang:nif_error("NIF library not loaded").
 
 hello(_T) ->

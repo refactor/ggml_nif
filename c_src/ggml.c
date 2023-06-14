@@ -3407,29 +3407,29 @@ inline static void ggml_vec_norm_inv_f32(const int n, float * s, const float * x
     *s = 1.f/(*s);
 }
 
-//
-// logging
-//
+#ifndef PRINT 
+#define PRINT printf
+#endif
 
 #if (GGML_DEBUG >= 1)
-#define GGML_PRINT_DEBUG(...) printf(__VA_ARGS__)
+#define GGML_PRINT_DEBUG(...) PRINT(__VA_ARGS__)
 #else
 #define GGML_PRINT_DEBUG(...)
 #endif
 
 #if (GGML_DEBUG >= 5)
-#define GGML_PRINT_DEBUG_5(...) printf(__VA_ARGS__)
+#define GGML_PRINT_DEBUG_5(...) PRINT(__VA_ARGS__)
 #else
 #define GGML_PRINT_DEBUG_5(...)
 #endif
 
 #if (GGML_DEBUG >= 10)
-#define GGML_PRINT_DEBUG_10(...) printf(__VA_ARGS__)
+#define GGML_PRINT_DEBUG_10(...) PRINT(__VA_ARGS__)
 #else
 #define GGML_PRINT_DEBUG_10(...)
 #endif
 
-#define GGML_PRINT(...) printf(__VA_ARGS__)
+#define GGML_PRINT(...) PRINT(__VA_ARGS__)
 
 //
 // data types
@@ -3705,21 +3705,21 @@ inline static void ggml_critical_section_end(void) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ggml_print_object(const struct ggml_object * obj) {
-    GGML_PRINT(" - ggml_object: offset = %zu, size = %zu, next = %p\n",
+    GGML_PRINT(" - ggml_object: offset = %zu, size = %zu, next = %p\r\n",
             obj->offs, obj->size, (const void *) obj->next);
 }
 
 void ggml_print_objects(const struct ggml_context * ctx) {
     struct ggml_object * obj = ctx->objects_begin;
 
-    GGML_PRINT("%s: objects in context %p:\n", __func__, (const void *) ctx);
+    GGML_PRINT("%s: objects in context %p:\r\n", __func__, (const void *) ctx);
 
     while (obj != NULL) {
         ggml_print_object(obj);
         obj = obj->next;
     }
 
-    GGML_PRINT("%s: --- end ---\n", __func__);
+    GGML_PRINT("%s: --- end ---\r\n", __func__);
 }
 
 int64_t ggml_nelements(const struct ggml_tensor * tensor) {

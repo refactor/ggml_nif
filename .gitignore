@@ -1,6 +1,11 @@
 .erlang.mk/
 c_src/env.mk
+models/
+*.idx3-ubyte
+*.dot
+*.png
 *.beam
+*.patch
 .cache/
 ebin/
 *.sw[op]
