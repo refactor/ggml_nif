@@ -1,0 +1,228 @@
+diff --git a/c_src/ggml.c b/c_src/ggml.c
+index ba5e99d..3311909 100644
+--- a/c_src/ggml.c
++++ b/c_src/ggml.c
+@@ -3461,29 +3461,29 @@ inline static void ggml_vec_norm_inv_f32(const int n, float * s, const float * x
+     *s = 1.f/(*s);
+ }
+ 
+-//
+-// logging
+-//
++#ifndef PRINTF
++#define PRINTF printf
++#endif
+ 
+ #if (GGML_DEBUG >= 1)
+-#define GGML_PRINT_DEBUG(...) printf(__VA_ARGS__)
++#define GGML_PRINT_DEBUG(...) PRINTF(__VA_ARGS__)
+ #else
+ #define GGML_PRINT_DEBUG(...)
+ #endif
+ 
+ #if (GGML_DEBUG >= 5)
+-#define GGML_PRINT_DEBUG_5(...) printf(__VA_ARGS__)
++#define GGML_PRINT_DEBUG_5(...) PRINTF(__VA_ARGS__)
+ #else
+ #define GGML_PRINT_DEBUG_5(...)
+ #endif
+ 
+ #if (GGML_DEBUG >= 10)
+-#define GGML_PRINT_DEBUG_10(...) printf(__VA_ARGS__)
++#define GGML_PRINT_DEBUG_10(...) PRINTF(__VA_ARGS__)
+ #else
+ #define GGML_PRINT_DEBUG_10(...)
+ #endif
+ 
+-#define GGML_PRINT(...) printf(__VA_ARGS__)
++#define GGML_PRINT(...) PRINTF(__VA_ARGS__)
+ 
+ //
+ // data types
+@@ -3972,7 +3972,7 @@ struct ggml_context * ggml_init(struct ggml_init_params params) {
+ 
+             const uint64_t t_end = ggml_time_us(); UNUSED(t_end);
+ 
+-            GGML_PRINT_DEBUG("%s: GELU, Quick GELU, SILU and EXP tables initialized in %f ms\n", __func__, (t_end - t_start)/1000.0f);
++            GGML_PRINT_DEBUG("%s: GELU, Quick GELU, SILU and EXP tables initialized in %f ms\r\n", __func__, (t_end - t_start)/1000.0f);
+         }
+ 
+         // initialize g_state
+@@ -3989,7 +3989,7 @@ struct ggml_context * ggml_init(struct ggml_init_params params) {
+ 
+             const uint64_t t_end = ggml_time_us(); UNUSED(t_end);
+ 
+-            GGML_PRINT_DEBUG("%s: g_state initialized in %f ms\n", __func__, (t_end - t_start)/1000.0f);
++            GGML_PRINT_DEBUG("%s: g_state initialized in %f ms\r\n", __func__, (t_end - t_start)/1000.0f);
+         }
+ 
+ #if defined(GGML_USE_CUBLAS)
+@@ -4009,13 +4009,13 @@ struct ggml_context * ggml_init(struct ggml_init_params params) {
+             g_state.contexts[i].used = true;
+             ctx = &g_state.contexts[i].context;
+ 
+-            GGML_PRINT_DEBUG("%s: found unused context %d\n", __func__, i);
++            GGML_PRINT_DEBUG("%s: found unused context %d\r\n", __func__, i);
+             break;
+         }
+     }
+ 
+     if (ctx == NULL) {
+-        GGML_PRINT_DEBUG("%s: no unused context found\n", __func__);
++        GGML_PRINT_DEBUG("%s: no unused context found\r\n", __func__);
+ 
+         ggml_critical_section_end();
+ 
+@@ -4040,7 +4040,7 @@ struct ggml_context * ggml_init(struct ggml_init_params params) {
+ 
+     ggml_assert_aligned(ctx->mem_buffer);
+ 
+-    GGML_PRINT_DEBUG("%s: context initialized\n", __func__);
++    GGML_PRINT_DEBUG("%s: context initialized\r\n", __func__);
+ 
+     ggml_critical_section_end();
+ 
+@@ -4057,7 +4057,7 @@ void ggml_free(struct ggml_context * ctx) {
+         if (&g_state.contexts[i].context == ctx) {
+             g_state.contexts[i].used = false;
+ 
+-            GGML_PRINT_DEBUG("%s: context %d with %d objects has been freed. memory used = %zu\n",
++            GGML_PRINT_DEBUG("%s: context %d with %d objects has been freed. memory used = %zu\r\n",
+                     __func__, i, ctx->n_objects, ctx->objects_end->offs + ctx->objects_end->size);
+ 
+             if (ctx->mem_buffer_owned) {
+@@ -4070,7 +4070,7 @@ void ggml_free(struct ggml_context * ctx) {
+     }
+ 
+     if (!found) {
+-        GGML_PRINT_DEBUG("%s: context not found\n", __func__);
++        GGML_PRINT_DEBUG("%s: context not found\r\n", __func__);
+     }
+ 
+     ggml_critical_section_end();
+@@ -14435,7 +14435,7 @@ static void ggml_build_forward_impl(struct ggml_cgraph * cgraph, struct ggml_ten
+     ggml_visit_parents(cgraph, tensor);
+ 
+     const int n_new = cgraph->n_nodes - n0;
+-    GGML_PRINT_DEBUG("%s: visited %d new nodes\n", __func__, n_new);
++    GGML_PRINT_DEBUG("%s: visited %d new nodes\r\n", __func__, n_new);
+ 
+     if (n_new > 0) {
+         // the last added node should always be starting point
+@@ -14497,7 +14497,7 @@ struct ggml_cgraph ggml_build_backward(struct ggml_context * ctx, struct ggml_cg
+         struct ggml_tensor * node = gf->nodes[i];
+ 
+         if (node->is_param) {
+-            GGML_PRINT_DEBUG("%s: found root node %p\n", __func__, (void *) node);
++            GGML_PRINT_DEBUG("%s: found root node %p\r\n", __func__, (void *) node);
+             ggml_build_forward_impl(&result, node->grad, true);
+         }
+     }
+@@ -14973,7 +14973,7 @@ void ggml_graph_compute(struct ggml_context * ctx, struct ggml_cgraph * cgraph)
+         if (work_size > 0 && cgraph->work == NULL) {
+             cgraph->work_size = work_size + CACHE_LINE_SIZE*(n_threads - 1);
+ 
+-            GGML_PRINT_DEBUG("%s: allocating work buffer for graph (%zu bytes)\n", __func__, cgraph->work_size);
++            GGML_PRINT_DEBUG("%s: allocating work buffer for graph (%zu bytes)\r\n", __func__, cgraph->work_size);
+             cgraph->work = ggml_new_tensor_1d(ctx, GGML_TYPE_I8, cgraph->work_size);
+         }
+     }
+@@ -14982,7 +14982,7 @@ void ggml_graph_compute(struct ggml_context * ctx, struct ggml_cgraph * cgraph)
+     const int64_t perf_start_time_us = ggml_perf_time_us();
+ 
+     for (int i = 0; i < cgraph->n_nodes; i++) {
+-        GGML_PRINT_DEBUG_5("%s: %d/%d\n", __func__, i, cgraph->n_nodes);
++        GGML_PRINT_DEBUG_5("%s: %d/%d\r\n", __func__, i, cgraph->n_nodes);
+ 
+         struct ggml_tensor * node = cgraph->nodes[i];
+ 
+@@ -15149,7 +15149,7 @@ void ggml_graph_compute(struct ggml_context * ctx, struct ggml_cgraph * cgraph)
+         cgraph->perf_cycles  += perf_cycles_cur;
+         cgraph->perf_time_us += perf_time_us_cur;
+ 
+-        GGML_PRINT_DEBUG("%s: perf (%d) - cpu = %.3f / %.3f ms, wall = %.3f / %.3f ms\n",
++        GGML_PRINT_DEBUG("%s: perf (%d) - cpu = %.3f / %.3f ms, wall = %.3f / %.3f ms\r\n",
+                 __func__, cgraph->perf_runs,
+                 (double) perf_cycles_cur      / (double) ggml_cycles_per_ms(),
+                 (double) cgraph->perf_cycles  / (double) ggml_cycles_per_ms() / (double) cgraph->perf_runs,
+@@ -15656,8 +15656,8 @@ void ggml_graph_print(const struct ggml_cgraph * cgraph) {
+ 
+     GGML_PRINT("=== GRAPH ===\n");
+ 
+-    GGML_PRINT_DEBUG("n_threads       = %d\n",        cgraph->n_threads);
+-    GGML_PRINT_DEBUG("total work size = %zu bytes\n", cgraph->work_size);
++    GGML_PRINT_DEBUG("n_threads       = %d\r\n",        cgraph->n_threads);
++    GGML_PRINT_DEBUG("total work size = %zu bytes\r\n", cgraph->work_size);
+ 
+     GGML_PRINT("n_nodes = %d\n", cgraph->n_nodes);
+     for (int i = 0; i < cgraph->n_nodes; i++) {
+@@ -15914,7 +15914,7 @@ static enum ggml_opt_result ggml_opt_adam(
+     int nx = 0;
+     for (int i = 0; i < gf->n_nodes; ++i) {
+         if (gf->nodes[i]->is_param) {
+-            GGML_PRINT_DEBUG("found param %d: grad->op = %d\n", np, gf->nodes[i]->grad->op);
++            GGML_PRINT_DEBUG("found param %d: grad->op = %d\r\n", np, gf->nodes[i]->grad->op);
+ 
+             GGML_ASSERT(np < GGML_MAX_PARAMS);
+ 
+@@ -15961,14 +15961,14 @@ static enum ggml_opt_result ggml_opt_adam(
+ 
+     // run the optimizer
+     for (int t = 0; t < params.adam.n_iter; ++t) {
+-        GGML_PRINT_DEBUG  ("=== iter %d ===\n", t);
++        GGML_PRINT_DEBUG  ("=== iter %d ===\r\n", t);
+ 
+-        GGML_PRINT_DEBUG  ("f      = %10.6f\n", ggml_get_f32_1d(f, 0));
+-        GGML_PRINT_DEBUG_5("df/dx0 = %10.6f\n", ggml_get_f32_1d(ps[0]->grad, 0));
+-        GGML_PRINT_DEBUG_5("df/dx1 = %10.6f\n", ggml_get_f32_1d(ps[1]->grad, 0));
++        GGML_PRINT_DEBUG  ("f      = %10.6f\r\n", ggml_get_f32_1d(f, 0));
++        GGML_PRINT_DEBUG_5("df/dx0 = %10.6f\r\n", ggml_get_f32_1d(ps[0]->grad, 0));
++        GGML_PRINT_DEBUG_5("df/dx1 = %10.6f\r\n", ggml_get_f32_1d(ps[1]->grad, 0));
+ 
+         for (int i = 0; i < np; ++i) {
+-            GGML_PRINT_DEBUG("param %d: %10.6f, g = %10.6f\n", i,
++            GGML_PRINT_DEBUG("param %d: %10.6f, g = %10.6f\r\n", i,
+                     ggml_get_f32_1d(ps[i], 0), ggml_get_f32_1d(ps[i]->grad, 0));
+         }
+ 
+@@ -16019,7 +16019,7 @@ static enum ggml_opt_result ggml_opt_adam(
+ 
+         // check convergence
+         if (fabsf(fx - fx_prev)/fx < params.adam.eps_f) {
+-            GGML_PRINT_DEBUG("converged\n");
++            GGML_PRINT_DEBUG("converged\r\n");
+ 
+             return GGML_OPT_OK;
+         }
+@@ -16056,11 +16056,11 @@ static enum ggml_opt_result ggml_opt_adam(
+ 
+         {
+             const int64_t t_end_cpu = ggml_cycles();
+-            GGML_PRINT_DEBUG("time iter:      %5.3f s\n", ((float)(t_end_cpu - t_start_cpu))/CLOCKS_PER_SEC);
++            GGML_PRINT_DEBUG("time iter:      %5.3f s\r\n", ((float)(t_end_cpu - t_start_cpu))/CLOCKS_PER_SEC);
+             UNUSED(t_end_cpu);
+ 
+             const int64_t t_end_wall = ggml_time_us();
+-            GGML_PRINT_DEBUG("wall time iter: %5.3f s\n", (t_end_wall - t_start_wall)/1e6);
++            GGML_PRINT_DEBUG("wall time iter: %5.3f s\r\n", (t_end_wall - t_start_wall)/1e6);
+             UNUSED(t_end_wall);
+         }
+     }
+@@ -16214,7 +16214,7 @@ static enum ggml_opt_result ggml_opt_lbfgs(
+     int nx = 0;
+     for (int i = 0; i < gf->n_nodes; ++i) {
+         if (gf->nodes[i]->is_param) {
+-            GGML_PRINT_DEBUG("found param %d: grad->op = %d\n", np, gf->nodes[i]->grad->op);
++            GGML_PRINT_DEBUG("found param %d: grad->op = %d\r\n", np, gf->nodes[i]->grad->op);
+ 
+             GGML_ASSERT(np < GGML_MAX_PARAMS);
+ 
+@@ -16316,7 +16316,7 @@ static enum ggml_opt_result ggml_opt_lbfgs(
+         ggml_vec_norm_f32(nx, &xnorm, x);
+         ggml_vec_norm_f32(nx, &gnorm, g);
+ 
+-        GGML_PRINT_DEBUG("f = %10.6f\n", ggml_get_f32_1d(f, 0));
++        GGML_PRINT_DEBUG("f = %10.6f\r\n", ggml_get_f32_1d(f, 0));
+ 
+         if (xnorm < 1.0f) {
+             xnorm = 1.0f;
