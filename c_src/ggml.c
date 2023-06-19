@@ -15529,7 +15529,7 @@ void ggml_graph_print(const struct ggml_cgraph * cgraph) {
         GGML_PRINT("perf_total_per_op_us[%16s] = %7.3f ms\n", GGML_OP_NAME[i], (double) perf_total_per_op_us[i] / 1000.0);
     }
 
-    GGML_PRINT("========================================\n");
+    GGML_PRINT("========================================\r\n");
 }
 
 // check if node is part of the graph
@@ -15688,7 +15688,7 @@ void ggml_graph_dump_dot(const struct ggml_cgraph * gb, const struct ggml_cgraph
 
     fclose(fp);
 
-    GGML_PRINT("%s: dot -Tpng %s -o %s.png && open %s.png\n", __func__, filename, filename, filename);
+    GGML_PRINT("%s: dot -Tpng %s -o %s.png && open %s.png\r\n", __func__, filename, filename, filename);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

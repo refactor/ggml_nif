@@ -17,13 +17,13 @@ static ErlNifResourceType* GGML_CONTEXT_RESOURCE_TYPE;
 static ErlNifResourceType* GGML_TENSOR_RESOURCE_TYPE;
 
 static void context_dtor(ErlNifEnv* env, void* obj) {
-    enif_fprintf(stdout, "free ggml_context......\n");
     struct my_context* myctx = (struct my_context*)obj;
+    enif_fprintf(stdout, "free ggml_context......\n");
     ggml_free(myctx->ctx);
 }
 static void tensor_dtor(ErlNifEnv* env, void* obj) {
-    enif_fprintf(stdout, "free ggml_tensor......\n");
     struct my_tensor* mytensor = (struct my_tensor*)obj;
+    enif_fprintf(stdout, "free ggml_tensor(%s)......\n", mytensor->tensor->name);
     enif_release_resource(mytensor->ctx);
 }
 

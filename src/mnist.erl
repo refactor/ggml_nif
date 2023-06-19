@@ -5,6 +5,8 @@
 -export([digit_load/1]).
 -export([digit_render/1]).
 
+-include_lib("kernel/include/file.hrl").
+
 -type mnist_hparams() :: #{n_input   := non_neg_integer(),
                            n_hidden  := non_neg_integer(),
                            n_classes := non_neg_integer()}.
@@ -18,27 +20,19 @@
 
 -define(F32_SZ, 4).
 
--spec calc_size(mnist_hparams()) -> non_neg_integer().
-calc_size(#{n_input := NInput, n_hidden := NHidden, n_classes := NClasses}) ->
-    CtxSize = NInput * NHidden + NHidden + NHidden * NClasses + NClasses,
-    trunc(CtxSize * ggml_nif:f32_sizef()).
-
 -spec model_load(file:filename()) -> mnist_model().
 model_load(FN) ->
-    Hparams = #{n_input => 784, n_hidden => 500, n_classes => 10},
-    io:format("hparams: ~p~n", [Hparams]),
-    {ok, FileBin} = file:read_file(FN),
-    Magic = 16#67676d6c,
-    <<Magic:32/little-unsigned, RestBin/binary>> = FileBin,
-
-    CtxSize = calc_size(Hparams),
+    {ok, FileInfo} = file:read_file_info(FN),
+    CtxSize = FileInfo#file_info.size,
     MemSize = CtxSize + 1024 * 1024,
     Ctx = ggml_nif:init(MemSize),
 
-    <<NDims:32/little-integer, RestBin1/binary>> = RestBin,
-    io:format("n_dims: ~p~n", [NDims]),
+    {ok, FileBin} = file:read_file(FN),
+    <<_Magic:32/little-unsigned, RestBin/binary>> = FileBin,
+    %Magic = 16#67676d6c,
+
+    <<_NDims:32/little-integer, RestBin1/binary>> = RestBin,
     <<NInput:32/little-integer, NHidden:32/little-integer, W01:(NInput*NHidden*?F32_SZ)/binary, RestBin2/binary>> = RestBin1,
-    io:format("n_input: ~p, n_hidden: ~p, byte_size: ~p~n", [NInput, NHidden, byte_size(W01)]),
 
 %    <<W0:(NInput*NHidden)/binary, RestBin3/binary>> = RestBin2,
     Fc1Weight = ggml_nif:new_tensor_f32_2d(Ctx, NInput, NHidden),
@@ -61,13 +55,17 @@ model_load(FN) ->
     ggml_nif:tensor_load(Fc2Bias, Bias2),
     ggml_nif:set_name(Fc2Bias, "fc2_bias"),
 
+    Hparams = #{n_input => NInput, n_hidden => NHidden, n_classes => NHidden2},
+    io:format("hparams: ~p~n", [Hparams]),
     #{hparams => Hparams, fc1_weight => Fc1Weight, fc1_bias => Fc1Bias,
       n_classes => NHidden2, fc2_weight => Fc2Weight, fc2_bias => Fc2Bias,
       ctx => Ctx}.
 
-model_eval(Model, Digit) ->
-    Ctx0 = ggml_nif:init(4 * 784 * 8),
-    Input = ggml_nif:new_tensor_f32_1d(Ctx0, 784),
+-spec model_eval(mnist_model(), binary()) -> non_neg_integer().
+model_eval(#{hparams:=Hparams} = Model, Digit) ->
+    NInput = maps:get(n_input, Hparams),
+    Ctx0 = ggml_nif:init(4 * NInput * 8),
+    Input = ggml_nif:new_tensor_f32_1d(Ctx0, NInput),
     ggml_nif:tensor_load(Input, Digit),
     ggml_nif:set_name(Input, "input"),
 
@@ -83,7 +81,6 @@ model_eval(Model, Digit) ->
     ggml_nif:graph_dump_dot(Probs, "mnist.dot"),
 
     Data = ggml_nif:get_data(Probs),
-    io:format("probs: ~p~n", [[E || <<E:32/float>> <= Data]]),
     argmax(Data).
 
 argmax(<<P:32/float, RestBin/binary>>) ->
@@ -100,7 +97,7 @@ digit_load(FN) ->
     {ok, FileBin} = file:read_file(FN),
     <<_:16/binary, DigitBin/binary>> = FileBin,
     ByteInput = binary:part(DigitBin, 784 * rand:uniform(1000), 784),
-    << <<E:32/native-float>> || <<E:8>> <= ByteInput>>.
+    << <<E:32/little-float>> || <<E:8>> <= ByteInput>>.
 
 digit_render(Digit) ->
     digit_render(Digit, 0, 0).
@@ -111,7 +108,7 @@ digit_render(Digit, Row, 27) ->
     io:format("~n"),
     digit_render(Digit, Row + 1, 0);
 digit_render(Digit, Row, Col) ->
-    <<D:32/native-float>> = binary:part(Digit, 4*(Row * 28 + Col), 4),
+    <<D:32/little-float>> = binary:part(Digit, 4*(Row * 28 + Col), 4),
     if D > 230 -> io:format("*");
            true -> io:format("_")
     end,
