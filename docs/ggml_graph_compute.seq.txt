@@ -1,60 +1,95 @@
 @startuml
 participant "Main" as Main
-participant "graph_compute" as Thread0 <<(T,#add1b2)ggml>>
-participant "graph_compute_thread" as Thread_j <<(T,#add1b2)ggml>>
- 
+participant "graph_compute" as Thread0 <<(T,#add1b2)thread>>
+participant "graph_compute_thread" as Thread_j <<(T,#add1b2)thread>>
+participant "compute_sate" as ComputeState <<(S,#fdd1b2)state>>
+participant "state_shared" as StateShared <<(S,#fff1b2)state>>
+participant "compute_graph" as ComputeGraph <<(C,#ee8866)data>>
+participant "compute_params" as ComputeParams <<(P,#fdd1b2)params>>
+participant "compute_params" as ComputeParams0 <<(P,#fdd1b2)params0>>
+hide footbox
+
+create ComputeGraph
+Main -> ComputeGraph: ggml_build_forward(cgraph, )
 Main -> Thread0 : ggml_graph_compute
 Thread0 -> Thread0: prepare compute_state_shared
 
-alt n_threads > 1: create thread pool
-  Thread0 -> Thread0: lock: init & flag
-  loop j:1..nthread-1
-    Thread0 -> Thread0: prepare compute_state
+create StateShared
+Thread0 -> StateShared: lock init
+note over Thread0: create thread pool
+alt#Gold #Pink n_threads > 1
+  note over Thread0,ComputeState: prepare comute_state for every worker
+  loop #LightBlue j:1..nthread-1
+    note over ComputeState,StateShared: bind state_shared
+    create ComputeState
+    Thread0 -> ComputeState: set compute_state for every worker
+    ComputeState -> ComputeGraph: set work-buffer(wsize/wdata) from 
     create Thread_j
-    Thread0 -> Thread_j
-    Thread_j -> Thread_j: graph_compute_thread
-    Thread_j -> Thread_j: try lock
-
+    Thread0 -> Thread_j: create worker thread
+    Thread_j -> StateShared: try lock
+    Thread_j o-\o StateShared: wait for work
   end
 end
-note right: create useless threads\n for worker.node is set NULL
+note right: start threads\n wait for worker.node to be set
 
-note over Thread0, Thread0: initialize tasks + work buffer
-loop i:0..nthread-1
-  Thread0 -> Thread0: for node in compute_graph\ncompute work_size
+note over Thread0, ComputeGraph: initialize tasks + work buffer
+loop node: compute_graph
+  Thread0 -> ComputeGraph: for node in compute_graph: compute work_size
 end
-note over Thread0: initialize work buffer\n as tensor_i8_1d
 alt work_size > 0
-  Thread0 -> Thread0: prepare work buffer
+  Thread0 -> ComputeGraph: allocating work buffer for graph
 end
 
-loop node: cgraph.nodes
-  Thread0 -> Thread0: node: get from compute_graph
-  Thread0 -> Thread0: GGML_TASK_INIT compute_params
-  Thread0 -> Thread0: ggml_compute_forward
-  loop worker: thread pool
-    Thread0 -> Thread0: init ggml_compute_params
-note over Thread0,Thread_j: launch thread pool
-    Thread0 -> Thread_j: set node for thread[j]
-    Thread0 ->o Thread_j: unlock
+loop #LightGreen node: compute_graph
+  create ComputeParams0
+  Thread0 -> ComputeParams0: set GGML_TASK_INIT, n_tasks from node, work from compute_graph
+  Thread0 -> Thread0: ggml_compute_forward(params, node)
+  note over Thread0,Thread_j: COMPUTE for multi-threads node->n_tasks > 1
+  alt#Gold #Pink node->n_tasks > 1
+  Thread0 o-/o StateShared: sync: wait all workers ready
+  note over Thread0,Thread_j: launch thread pool
+  loop #LightBlue worker: thread pool
+    create ComputeParams
+    Thread0 -> ComputeParams: set GGML_TASK_COMPUTE, ith,nth, wsize/wdata
+    Thread0 -> ComputeState: set node for worker
+    note over Thread0,Thread_j: unlock worker
+    Thread0 ->o StateShared: sync
     alt state->node != NULL
+      Thread_j o-/o StateShared: check if we should stop
       Thread_j -> Thread_j: ggml_compute_forward
       Thread_j -> Thread_j: state->node = NULL
     end
   end
-  Thread0 -> Thread0: GGML_TASK_COMPUTE
-  Thread0 -> Thread0: ggml_compute_forward: node
-note over Thread0,Thread_j: launch thread pool
-  Thread0 -> Thread0: FINALIZE
-  Thread0 -> Thread0: set GGML_TASK_FINALIZE for every thread
-  Thread0 -> Thread_j: sync
-  Thread0 -> Thread0: ggml_compute_forward\n GGML_TASK_FINALIZE
-note over Thread0,Thread_j: wait for thread pool
+end
+  
+Thread0 -> Thread0: GGML_TASK_COMPUTE
+  Thread0 -> Thread0: ggml_compute_forward(params0,node)
+  note over Thread0,Thread_j: wait for thread pool
+  alt #Pink node->n_tasks > 1
+    Thread0 ->o StateShared: spin: wait all workers
+  end
+
+  note over Thread0,Thread_j: FINALIZE
+  alt #Pink node.n_tasks > 1
+    Thread0 ->o StateShared: spin: wait all workers
+    note over Thread0,Thread_j: launch thread pool
+    Thread0 -> ComputeParams: set GGML_TASK_FINALIZE for every worker
+    Thread0 -> ComputeState: set node for every worker
+    note over Thread0,Thread_j: sync
+    Thread0 ->o StateShared: sync
+  end
+ 
+  Thread0 -> Thread0: GGML_TASK_FINALIZE
+  Thread0 -> Thread0: ggml_compute_forward(params0,node)
+  note over Thread0,Thread_j: wait for thread pool
+  Thread0 ->o StateShared: sync
 end
 
-alt n_threads > 1
-  Thread0 -> Thread_j: sync
 note over Thread0,Thread_j: join thread pool
+alt#Gold #Pink n_threads > 1
+  Thread0 ->o StateShared: wait for stop
   Thread0 -> Thread_j: ggml_thread_join
+  destroy Thread_j
+
 end
 @enduml

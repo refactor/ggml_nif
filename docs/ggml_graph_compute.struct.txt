@@ -4,7 +4,7 @@ struct tensor <<ggml>> {
   -n_tasks: int
 }
 
-class compute_graph <<ggml>> {
+struct compute_graph <<ggml>> {
   +work:tensor
 }
 tensor <--* "*" compute_graph : nodes
@@ -23,9 +23,9 @@ struct state_shared <<ggml>> {
 struct state <<(T,#ff7700)worker>> {
   -thrd: ggml_thread_t
 }
-state_shared "1" <-o "0..*" state : shared
+state_shared "1" <-* "0..*" state : shared <
 
-struct params <<ggml_compute>> {
+struct params <<(T,#ff7700)ggml_compute>> {
   type: ggml_task_type
   .. thread info ..
   ith: int
@@ -44,13 +44,24 @@ end note
 state *--> params: params
 }
 
-compute.state "*" - "1" data.tensor :node
-(compute.state,data.tensor) .. compute_graph #red;line.dashed;text:red : iterate
+compute.state  *-> data.tensor: node
 
 tensor::n_tasks <- state_shared::n_threads #blue;line.dotted;text:blue : maybe from
 
-
-
 data.compute_graph::work -> compute.params::wdata #blue;line.dotted
+
+interface compute_forward
+interface compute_forward_add
+interface compute_forward_abs
+interface compute_forward_mul
+interface compute_forward_mul_mat
+compute_forward <|-- compute_forward_add
+compute_forward <|-- compute_forward_abs
+compute_forward <|-- compute_forward_mul
+compute_forward <|-- compute_forward_mul_mat
+
+compute.params <..o "param" compute_forward
+data.tensor <..o "node" compute_forward
 @enduml
+
 
