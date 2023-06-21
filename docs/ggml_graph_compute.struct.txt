@@ -1,0 +1,56 @@
+@startuml
+package data <<Database>> {
+struct tensor <<ggml>> {
+  -n_tasks: int
+}
+
+class compute_graph <<ggml>> {
+  +work:tensor
+}
+tensor <--* "*" compute_graph : nodes
+}
+
+package compute {
+struct state_shared <<ggml>> {
+  #spin: ggml_lock_t
+  ~n_threads: int
+  .. atomic ..
+  -n_ready: int
+  -has_work: bool
+  -stop: bool
+}
+
+struct state <<(T,#ff7700)worker>> {
+  -thrd: ggml_thread_t
+}
+state_shared "1" <-o "0..*" state : shared
+
+struct params <<ggml_compute>> {
+  type: ggml_task_type
+  .. thread info ..
+  ith: int
+  nth: int
+  .. for all thread ..
+  wsize: size_t
+  wdata: void*
+}
+note left of params::"ith: int"
+thread info for data partition
+end note
+note left of params::"wdata: void*"
+work buffer for all thread
+end note
+
+state *--> params: params
+}
+
+compute.state "*" - "1" data.tensor :node
+(compute.state,data.tensor) .. compute_graph #red;line.dashed;text:red : iterate
+
+tensor::n_tasks <- state_shared::n_threads #blue;line.dotted;text:blue : maybe from
+
+
+
+data.compute_graph::work -> compute.params::wdata #blue;line.dotted
+@enduml
+

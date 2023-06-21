@@ -1,0 +1,60 @@
+@startuml
+participant "Main" as Main
+participant "graph_compute" as Thread0 <<(T,#add1b2)ggml>>
+participant "graph_compute_thread" as Thread_j <<(T,#add1b2)ggml>>
+ 
+Main -> Thread0 : ggml_graph_compute
+Thread0 -> Thread0: prepare compute_state_shared
+
+alt n_threads > 1: create thread pool
+  Thread0 -> Thread0: lock: init & flag
+  loop j:1..nthread-1
+    Thread0 -> Thread0: prepare compute_state
+    create Thread_j
+    Thread0 -> Thread_j
+    Thread_j -> Thread_j: graph_compute_thread
+    Thread_j -> Thread_j: try lock
+
+  end
+end
+note right: create useless threads\n for worker.node is set NULL
+
+note over Thread0, Thread0: initialize tasks + work buffer
+loop i:0..nthread-1
+  Thread0 -> Thread0: for node in compute_graph\ncompute work_size
+end
+note over Thread0: initialize work buffer\n as tensor_i8_1d
+alt work_size > 0
+  Thread0 -> Thread0: prepare work buffer
+end
+
+loop node: cgraph.nodes
+  Thread0 -> Thread0: node: get from compute_graph
+  Thread0 -> Thread0: GGML_TASK_INIT compute_params
+  Thread0 -> Thread0: ggml_compute_forward
+  loop worker: thread pool
+    Thread0 -> Thread0: init ggml_compute_params
+note over Thread0,Thread_j: launch thread pool
+    Thread0 -> Thread_j: set node for thread[j]
+    Thread0 ->o Thread_j: unlock
+    alt state->node != NULL
+      Thread_j -> Thread_j: ggml_compute_forward
+      Thread_j -> Thread_j: state->node = NULL
+    end
+  end
+  Thread0 -> Thread0: GGML_TASK_COMPUTE
+  Thread0 -> Thread0: ggml_compute_forward: node
+note over Thread0,Thread_j: launch thread pool
+  Thread0 -> Thread0: FINALIZE
+  Thread0 -> Thread0: set GGML_TASK_FINALIZE for every thread
+  Thread0 -> Thread_j: sync
+  Thread0 -> Thread0: ggml_compute_forward\n GGML_TASK_FINALIZE
+note over Thread0,Thread_j: wait for thread pool
+end
+
+alt n_threads > 1
+  Thread0 -> Thread_j: sync
+note over Thread0,Thread_j: join thread pool
+  Thread0 -> Thread_j: ggml_thread_join
+end
+@enduml
