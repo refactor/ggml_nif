@@ -1,4 +1,5 @@
 #pragma once
+#include "common.h"
 
 //
 // GGML Tensor Library

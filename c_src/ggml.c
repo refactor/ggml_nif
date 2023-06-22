@@ -3852,21 +3852,21 @@ inline static void ggml_critical_section_end(void) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ggml_print_object(const struct ggml_object * obj) {
-    GGML_PRINT(" - ggml_object: offset = %zu, size = %zu, next = %p\r\n",
+    GGML_PRINT(" - ggml_object: offset = %zu, size = %zu, next = %p\n",
             obj->offs, obj->size, (const void *) obj->next);
 }
 
 void ggml_print_objects(const struct ggml_context * ctx) {
     struct ggml_object * obj = ctx->objects_begin;
 
-    GGML_PRINT("%s: objects in context %p:\r\n", __func__, (const void *) ctx);
+    GGML_PRINT("%s: objects in context %p:\n", __func__, (const void *) ctx);
 
     while (obj != NULL) {
         ggml_print_object(obj);
         obj = obj->next;
     }
 
-    GGML_PRINT("%s: --- end ---\r\n", __func__);
+    GGML_PRINT("%s: --- end ---\n", __func__);
 }
 
 int64_t ggml_nelements(const struct ggml_tensor * tensor) {
@@ -4096,7 +4096,7 @@ struct ggml_context * ggml_init(struct ggml_init_params params) {
 
             const uint64_t t_end = ggml_time_us(); UNUSED(t_end);
 
-            GGML_PRINT_DEBUG("%s: GELU, Quick GELU, SILU and EXP tables initialized in %f ms\r\n", __func__, (t_end - t_start)/1000.0f);
+            GGML_PRINT_DEBUG("%s: GELU, Quick GELU, SILU and EXP tables initialized in %f ms\n", __func__, (t_end - t_start)/1000.0f);
         }
 
         // initialize g_state
@@ -4113,7 +4113,7 @@ struct ggml_context * ggml_init(struct ggml_init_params params) {
 
             const uint64_t t_end = ggml_time_us(); UNUSED(t_end);
 
-            GGML_PRINT_DEBUG("%s: g_state initialized in %f ms\r\n", __func__, (t_end - t_start)/1000.0f);
+            GGML_PRINT_DEBUG("%s: g_state initialized in %f ms\n", __func__, (t_end - t_start)/1000.0f);
         }
 
 #if defined(GGML_USE_CUBLAS)
@@ -4133,13 +4133,13 @@ struct ggml_context * ggml_init(struct ggml_init_params params) {
             g_state.contexts[i].used = true;
             ctx = &g_state.contexts[i].context;
 
-            GGML_PRINT_DEBUG("%s: found unused context %d\r\n", __func__, i);
+            GGML_PRINT_DEBUG("%s: found unused context %d\n", __func__, i);
             break;
         }
     }
 
     if (ctx == NULL) {
-        GGML_PRINT_DEBUG("%s: no unused context found\r\n", __func__);
+        GGML_PRINT_DEBUG("%s: no unused context found\n", __func__);
 
         ggml_critical_section_end();
 
@@ -4165,7 +4165,7 @@ struct ggml_context * ggml_init(struct ggml_init_params params) {
 
     ggml_assert_aligned(ctx->mem_buffer);
 
-    GGML_PRINT_DEBUG("%s: context initialized\r\n", __func__);
+    GGML_PRINT_DEBUG("%s: context initialized\n", __func__);
 
     ggml_critical_section_end();
 
@@ -4182,7 +4182,7 @@ void ggml_free(struct ggml_context * ctx) {
         if (&g_state.contexts[i].context == ctx) {
             g_state.contexts[i].used = false;
 
-            GGML_PRINT_DEBUG("%s: context %d with %d objects has been freed. memory used = %zu\r\n",
+            GGML_PRINT_DEBUG("%s: context %d with %d objects has been freed. memory used = %zu\n",
                     __func__, i, ctx->n_objects, ctx->objects_end->offs + ctx->objects_end->size);
 
             if (ctx->mem_buffer_owned) {
@@ -4195,7 +4195,7 @@ void ggml_free(struct ggml_context * ctx) {
     }
 
     if (!found) {
-        GGML_PRINT_DEBUG("%s: context not found\r\n", __func__);
+        GGML_PRINT_DEBUG("%s: context not found\n", __func__);
     }
 
     ggml_critical_section_end();
@@ -4299,7 +4299,7 @@ struct ggml_tensor * ggml_new_tensor_impl(
         size_needed += GGML_TENSOR_SIZE;
 
         if (cur_end + size_needed + GGML_OBJECT_SIZE > ctx->mem_size) {
-            GGML_PRINT("%s: not enough space in the context's memory pool (needed %zu, available %zu)\r\n",
+            GGML_PRINT("%s: not enough space in the context's memory pool (needed %zu, available %zu)\n",
                     __func__, cur_end + size_needed + GGML_OBJECT_SIZE, ctx->mem_size);
             assert(false);
             return NULL;
@@ -4312,14 +4312,14 @@ struct ggml_tensor * ggml_new_tensor_impl(
         };
     } else {
         if (ctx->scratch.offs + size_needed > ctx->scratch.size) {
-            GGML_PRINT("%s: not enough space in the scratch memory pool (needed %zu, available %zu)\r\n",
+            GGML_PRINT("%s: not enough space in the scratch memory pool (needed %zu, available %zu)\n",
                     __func__, ctx->scratch.offs + size_needed, ctx->scratch.size);
             assert(false);
             return NULL;
         }
 
         if (cur_end + GGML_TENSOR_SIZE + GGML_OBJECT_SIZE > ctx->mem_size) {
-            GGML_PRINT("%s: not enough space in the context's memory pool (needed %zu, available %zu)\r\n",
+            GGML_PRINT("%s: not enough space in the context's memory pool (needed %zu, available %zu)\n",
                     __func__, cur_end + GGML_TENSOR_SIZE + GGML_OBJECT_SIZE, ctx->mem_size);
             assert(false);
             return NULL;
@@ -16034,7 +16034,7 @@ static void ggml_build_forward_impl(struct ggml_cgraph * cgraph, struct ggml_ten
     ggml_visit_parents(cgraph, tensor);
 
     const int n_new = cgraph->n_nodes - n0;
-    GGML_PRINT_DEBUG("%s: visited %d new nodes\r\n", __func__, n_new);
+    GGML_PRINT_DEBUG("%s: visited %d new nodes\n", __func__, n_new);
 
     if (n_new > 0) {
         // the last added node should always be starting point
@@ -16096,7 +16096,7 @@ struct ggml_cgraph ggml_build_backward(struct ggml_context * ctx, struct ggml_cg
         struct ggml_tensor * node = gf->nodes[i];
 
         if (node->is_param) {
-            GGML_PRINT_DEBUG("%s: found root node %p\r\n", __func__, (void *) node);
+            GGML_PRINT_DEBUG("%s: found root node %p\n", __func__, (void *) node);
             ggml_build_forward_impl(&result, node->grad, true);
         }
     }
@@ -16611,7 +16611,7 @@ void ggml_graph_compute(struct ggml_context * ctx, struct ggml_cgraph * cgraph) 
         if (work_size > 0 && cgraph->work == NULL) {
             cgraph->work_size = work_size + CACHE_LINE_SIZE*(n_threads - 1);
 
-            GGML_PRINT_DEBUG("%s: allocating work buffer for graph (%zu bytes)\r\n", __func__, cgraph->work_size);
+            GGML_PRINT_DEBUG("%s: allocating work buffer for graph (%zu bytes)\n", __func__, cgraph->work_size);
             cgraph->work = ggml_new_tensor_1d(ctx, GGML_TYPE_I8, cgraph->work_size);
         }
     }
@@ -16620,7 +16620,7 @@ void ggml_graph_compute(struct ggml_context * ctx, struct ggml_cgraph * cgraph) 
     const int64_t perf_start_time_us = ggml_perf_time_us();
 
     for (int i = 0; i < cgraph->n_nodes; i++) {
-        GGML_PRINT_DEBUG_5("%s: %d/%d\r\n", __func__, i, cgraph->n_nodes);
+        GGML_PRINT_DEBUG_5("%s: %d/%d\n", __func__, i, cgraph->n_nodes);
 
         struct ggml_tensor * node = cgraph->nodes[i];
 
@@ -16787,7 +16787,7 @@ void ggml_graph_compute(struct ggml_context * ctx, struct ggml_cgraph * cgraph) 
         cgraph->perf_cycles  += perf_cycles_cur;
         cgraph->perf_time_us += perf_time_us_cur;
 
-        GGML_PRINT_DEBUG("%s: perf (%d) - cpu = %.3f / %.3f ms, wall = %.3f / %.3f ms\r\n",
+        GGML_PRINT_DEBUG("%s: perf (%d) - cpu = %.3f / %.3f ms, wall = %.3f / %.3f ms\n",
                 __func__, cgraph->perf_runs,
                 (double) perf_cycles_cur      / (double) ggml_cycles_per_ms(),
                 (double) cgraph->perf_cycles  / (double) ggml_cycles_per_ms() / (double) cgraph->perf_runs,
@@ -16830,7 +16830,7 @@ static void ggml_graph_export_leaf(const struct ggml_tensor * tensor, FILE * fou
     const int64_t * ne = tensor->ne;
     const size_t  * nb = tensor->nb;
 
-    fprintf(fout, "%-6s %-12s %8d %" PRId64 " %" PRId64 " %" PRId64 " %" PRId64 " %16zu %16zu %16zu %16zu %16p %32s\r\n",
+    fprintf(fout, "%-6s %-12s %8d %" PRId64 " %" PRId64 " %" PRId64 " %" PRId64 " %16zu %16zu %16zu %16zu %16p %32s\n",
             ggml_type_name(tensor->type),
             ggml_op_name  (tensor->op),
             tensor->n_dims,
@@ -16844,7 +16844,7 @@ static void ggml_graph_export_node(const struct ggml_tensor * tensor, const char
     const int64_t * ne = tensor->ne;
     const size_t  * nb = tensor->nb;
 
-    fprintf(fout, "%-6s %-6s %-12s %8d %" PRId64 " %" PRId64 " %" PRId64 " %" PRId64 " %16zu %16zu %16zu %16zu %8d %16p %32s\r\n",
+    fprintf(fout, "%-6s %-6s %-12s %8d %" PRId64 " %" PRId64 " %" PRId64 " %" PRId64 " %16zu %16zu %16zu %16zu %8d %16p %32s\n",
             arg,
             ggml_type_name(tensor->type),
             ggml_op_name  (tensor->op),
@@ -16872,16 +16872,16 @@ void ggml_graph_export(const struct ggml_cgraph * cgraph, const char * fname) {
     {
         FILE * fout = stdout;
 
-        fprintf(fout, "\r\n");
-        fprintf(fout, "%-16s %8x\r\n", "magic",        GGML_FILE_MAGIC);
-        fprintf(fout, "%-16s %8d\r\n", "version",      GGML_FILE_VERSION);
-        fprintf(fout, "%-16s %8d\r\n", "leafs",        cgraph->n_leafs);
-        fprintf(fout, "%-16s %8d\r\n", "nodes",        cgraph->n_nodes);
-        fprintf(fout, "%-16s %" PRIu64 "\r\n", "eval", size_eval);
+        fprintf(fout, "\n");
+        fprintf(fout, "%-16s %8x\n", "magic",        GGML_FILE_MAGIC);
+        fprintf(fout, "%-16s %8d\n", "version",      GGML_FILE_VERSION);
+        fprintf(fout, "%-16s %8d\n", "leafs",        cgraph->n_leafs);
+        fprintf(fout, "%-16s %8d\n", "nodes",        cgraph->n_nodes);
+        fprintf(fout, "%-16s %" PRIu64 "\n", "eval", size_eval);
 
         // header
-        fprintf(fout, "\r\n");
-        fprintf(fout, "%-6s %-12s %8s %8s %8s %8s %8s %16s %16s %16s %16s %16s %16s\r\n",
+        fprintf(fout, "\n");
+        fprintf(fout, "%-6s %-12s %8s %8s %8s %8s %8s %16s %16s %16s %16s %16s %16s\n",
                 "TYPE", "OP", "NDIMS", "NE0", "NE1", "NE2", "NE3", "NB0", "NB1", "NB2", "NB3", "DATA", "NAME");
 
         for (int i = 0; i < cgraph->n_leafs; ++i) {
@@ -16893,8 +16893,8 @@ void ggml_graph_export(const struct ggml_cgraph * cgraph, const char * fname) {
         }
 
         // header
-        fprintf(fout, "\r\n");
-        fprintf(fout, "%-6s %-6s %-12s %8s %8s %8s %8s %8s %16s %16s %16s %16s %8s %16s %16s\r\n",
+        fprintf(fout, "\n");
+        fprintf(fout, "%-6s %-6s %-12s %8s %8s %8s %8s %8s %16s %16s %16s %16s %8s %16s %16s\n",
                 "ARG", "TYPE", "OP", "NDIMS", "NE0", "NE1", "NE2", "NE3", "NB0", "NB1", "NB2", "NB3", "NTASKS", "DATA", "NAME");
 
         for (int i = 0; i < cgraph->n_nodes; ++i) {
@@ -16914,10 +16914,10 @@ void ggml_graph_export(const struct ggml_cgraph * cgraph, const char * fname) {
                 }
             }
 
-            fprintf(fout, "\r\n");
+            fprintf(fout, "\n");
         }
 
-        fprintf(fout, "\r\n");
+        fprintf(fout, "\n");
     }
 
     // write binary data
@@ -16925,7 +16925,7 @@ void ggml_graph_export(const struct ggml_cgraph * cgraph, const char * fname) {
         FILE * fout = fopen(fname, "wb");
 
         if (!fout) {
-            fprintf(stderr, "%s: failed to open %s\r\n", __func__, fname);
+            fprintf(stderr, "%s: failed to open %s\n", __func__, fname);
             return;
         }
 
@@ -17049,7 +17049,7 @@ void ggml_graph_export(const struct ggml_cgraph * cgraph, const char * fname) {
                             }
 
                             if (idx == -1) {
-                                fprintf(stderr, "%s: failed to find tensor, arg = %d, node = %d\r\n", __func__, j, i);
+                                fprintf(stderr, "%s: failed to find tensor, arg = %d, node = %d\n", __func__, j, i);
                                 return;
                             }
 
@@ -17080,7 +17080,7 @@ struct ggml_cgraph ggml_graph_import(const char * fname, struct ggml_context ** 
     {
         FILE * fin = fopen(fname, "rb");
         if (!fin) {
-            fprintf(stderr, "%s: failed to open %s\r\n", __func__, fname);
+            fprintf(stderr, "%s: failed to open %s\n", __func__, fname);
             return result;
         }
 
@@ -17103,7 +17103,7 @@ struct ggml_cgraph ggml_graph_import(const char * fname, struct ggml_context ** 
             *ctx_data = ggml_init(params);
 
             if (!*ctx_data) {
-                fprintf(stderr, "%s: failed to create ggml context\r\n", __func__);
+                fprintf(stderr, "%s: failed to create ggml context\n", __func__);
                 fclose(fin);
                 return result;
             }
@@ -17114,7 +17114,7 @@ struct ggml_cgraph ggml_graph_import(const char * fname, struct ggml_context ** 
         {
             const size_t ret = fread(data->data, sizeof(char), fsize, fin);
             if (ret != fsize) {
-                fprintf(stderr, "%s: failed to read %s\r\n", __func__, fname);
+                fprintf(stderr, "%s: failed to read %s\n", __func__, fname);
                 fclose(fin);
                 return result;
             }
@@ -17130,14 +17130,14 @@ struct ggml_cgraph ggml_graph_import(const char * fname, struct ggml_context ** 
         const uint32_t magic = *(const uint32_t *) ptr; ptr += sizeof(magic);
 
         if (magic != GGML_FILE_MAGIC) {
-            fprintf(stderr, "%s: invalid magic number, got %08x\r\n", __func__, magic);
+            fprintf(stderr, "%s: invalid magic number, got %08x\n", __func__, magic);
             return result;
         }
 
         const uint32_t version = *(const uint32_t *) ptr; ptr += sizeof(version);
 
         if (version != GGML_FILE_VERSION) {
-            fprintf(stderr, "%s: invalid version number\r\n", __func__);
+            fprintf(stderr, "%s: invalid version number\n", __func__);
             return result;
         }
 
@@ -17161,7 +17161,7 @@ struct ggml_cgraph ggml_graph_import(const char * fname, struct ggml_context ** 
             *ctx_eval = ggml_init(params);
 
             if (!*ctx_eval) {
-                fprintf(stderr, "%s: failed to create ggml context\r\n", __func__);
+                fprintf(stderr, "%s: failed to create ggml context\n", __func__);
                 return result;
             }
         }
@@ -17209,7 +17209,7 @@ struct ggml_cgraph ggml_graph_import(const char * fname, struct ggml_context ** 
 
                 ptr += ggml_nbytes(tensor);
 
-                fprintf(stderr, "%s: loaded leaf %d: '%16s', %3d dims, %9zu bytes\r\n", __func__, i, tensor->name, n_dims, ggml_nbytes(tensor));
+                fprintf(stderr, "%s: loaded leaf %d: '%16s', %3d dims, %9zu bytes\n", __func__, i, tensor->name, n_dims, ggml_nbytes(tensor));
             }
         }
 
@@ -17317,7 +17317,7 @@ struct ggml_cgraph ggml_graph_import(const char * fname, struct ggml_context ** 
 
                 result.nodes[i] = tensor;
 
-                fprintf(stderr, "%s: loaded node %d: '%16s', %3d dims, %9zu bytes\r\n", __func__, i, tensor->name, n_dims, ggml_nbytes(tensor));
+                fprintf(stderr, "%s: loaded node %d: '%16s', %3d dims, %9zu bytes\n", __func__, i, tensor->name, n_dims, ggml_nbytes(tensor));
             }
         }
     }
@@ -17328,18 +17328,18 @@ struct ggml_cgraph ggml_graph_import(const char * fname, struct ggml_context ** 
 void ggml_graph_print(const struct ggml_cgraph * cgraph) {
     int64_t perf_total_per_op_us[GGML_OP_COUNT] = {0};
 
-    GGML_PRINT("=== GRAPH ===\r\n");
+    GGML_PRINT("=== GRAPH ===\n");
 
-    GGML_PRINT_DEBUG("n_threads       = %d\r\n",        cgraph->n_threads);
-    GGML_PRINT_DEBUG("total work size = %zu bytes\r\n", cgraph->work_size);
+    GGML_PRINT_DEBUG("n_threads       = %d\n",        cgraph->n_threads);
+    GGML_PRINT_DEBUG("total work size = %zu bytes\n", cgraph->work_size);
 
-    GGML_PRINT("n_nodes = %d\r\n", cgraph->n_nodes);
+    GGML_PRINT("n_nodes = %d\n", cgraph->n_nodes);
     for (int i = 0; i < cgraph->n_nodes; i++) {
         struct ggml_tensor * node = cgraph->nodes[i];
 
         perf_total_per_op_us[node->op] += MAX(1, node->perf_time_us);
 
-        GGML_PRINT(" - %3d: [ %5" PRId64 ", %5" PRId64 ", %5" PRId64 "] %16s %s (%3d) cpu = %7.3f / %7.3f ms, wall = %7.3f / %7.3f ms\r\n",
+        GGML_PRINT(" - %3d: [ %5" PRId64 ", %5" PRId64 ", %5" PRId64 "] %16s %s (%3d) cpu = %7.3f / %7.3f ms, wall = %7.3f / %7.3f ms\n",
                 i,
                 node->ne[0], node->ne[1], node->ne[2],
                 GGML_OP_NAME[node->op], node->is_param ? "x" : node->grad ? "g" : " ", node->perf_runs,
@@ -17349,11 +17349,11 @@ void ggml_graph_print(const struct ggml_cgraph * cgraph) {
                 (double) node->perf_time_us / 1000.0 / node->perf_runs);
     }
 
-    GGML_PRINT("n_leafs = %d\r\n", cgraph->n_leafs);
+    GGML_PRINT("n_leafs = %d\n", cgraph->n_leafs);
     for (int i = 0; i < cgraph->n_leafs; i++) {
         struct ggml_tensor * node = cgraph->leafs[i];
 
-        GGML_PRINT(" - %3d: [ %5" PRId64 ", %5" PRId64 "] %8s\r\n",
+        GGML_PRINT(" - %3d: [ %5" PRId64 ", %5" PRId64 "] %8s\n",
                 i,
                 node->ne[0], node->ne[1],
                 GGML_OP_NAME[node->op]);
@@ -17364,10 +17364,10 @@ void ggml_graph_print(const struct ggml_cgraph * cgraph) {
             continue;
         }
 
-        GGML_PRINT("perf_total_per_op_us[%16s] = %7.3f ms\r\n", GGML_OP_NAME[i], (double) perf_total_per_op_us[i] / 1000.0);
+        GGML_PRINT("perf_total_per_op_us[%16s] = %7.3f ms\n", GGML_OP_NAME[i], (double) perf_total_per_op_us[i] / 1000.0);
     }
 
-    GGML_PRINT("========================================\r\n");
+    GGML_PRINT("========================================\n");
 }
 
 // check if node is part of the graph
@@ -17526,7 +17526,7 @@ void ggml_graph_dump_dot(const struct ggml_cgraph * gb, const struct ggml_cgraph
 
     fclose(fp);
 
-    GGML_PRINT("%s: dot -Tpng %s -o %s.png && open %s.png\r\n", __func__, filename, filename, filename);
+    GGML_PRINT("%s: dot -Tpng %s -o %s.png && open %s.png\n", __func__, filename, filename, filename);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -17589,7 +17589,7 @@ static enum ggml_opt_result ggml_opt_adam(
     int nx = 0;
     for (int i = 0; i < gf->n_nodes; ++i) {
         if (gf->nodes[i]->is_param) {
-            GGML_PRINT_DEBUG("found param %d: grad->op = %d\r\n", np, gf->nodes[i]->grad->op);
+            GGML_PRINT_DEBUG("found param %d: grad->op = %d\n", np, gf->nodes[i]->grad->op);
 
             GGML_ASSERT(np < GGML_MAX_PARAMS);
 
@@ -17651,14 +17651,14 @@ static enum ggml_opt_result ggml_opt_adam(
     // run the optimizer
     for (int t = 0; t < params.adam.n_iter; ++t) {
         opt->iter = iter0 + t + 1;
-        GGML_PRINT_DEBUG  ("=== iter %d ===\r\n", t);
+        GGML_PRINT_DEBUG  ("=== iter %d ===\n", t);
 
-        GGML_PRINT_DEBUG  ("f      = %10.6f\r\n", ggml_get_f32_1d(f, 0));
-        GGML_PRINT_DEBUG_5("df/dx0 = %10.6f\r\n", ggml_get_f32_1d(ps[0]->grad, 0));
-        GGML_PRINT_DEBUG_5("df/dx1 = %10.6f\r\n", ggml_get_f32_1d(ps[1]->grad, 0));
+        GGML_PRINT_DEBUG  ("f      = %10.6f\n", ggml_get_f32_1d(f, 0));
+        GGML_PRINT_DEBUG_5("df/dx0 = %10.6f\n", ggml_get_f32_1d(ps[0]->grad, 0));
+        GGML_PRINT_DEBUG_5("df/dx1 = %10.6f\n", ggml_get_f32_1d(ps[1]->grad, 0));
 
         for (int i = 0; i < np; ++i) {
-            GGML_PRINT_DEBUG("param %d: %10.6f, g = %10.6f\r\n", i,
+            GGML_PRINT_DEBUG("param %d: %10.6f, g = %10.6f\n", i,
                     ggml_get_f32_1d(ps[i], 0), ggml_get_f32_1d(ps[i]->grad, 0));
         }
 
@@ -17714,7 +17714,7 @@ static enum ggml_opt_result ggml_opt_adam(
 
         // check convergence
         if (fabsf(fx - fx_prev[0])/fx < params.adam.eps_f) {
-            GGML_PRINT_DEBUG("converged\r\n");
+            GGML_PRINT_DEBUG("converged\n");
 
             return GGML_OPT_OK;
         }
@@ -17751,11 +17751,11 @@ static enum ggml_opt_result ggml_opt_adam(
 
         {
             const int64_t t_end_cpu = ggml_cycles();
-            GGML_PRINT_DEBUG("time iter:      %5.3f s\r\n", ((float)(t_end_cpu - t_start_cpu))/CLOCKS_PER_SEC);
+            GGML_PRINT_DEBUG("time iter:      %5.3f s\n", ((float)(t_end_cpu - t_start_cpu))/CLOCKS_PER_SEC);
             UNUSED(t_end_cpu);
 
             const int64_t t_end_wall = ggml_time_us();
-            GGML_PRINT_DEBUG("wall time iter: %5.3f s\r\n", (t_end_wall - t_start_wall)/1e6);
+            GGML_PRINT_DEBUG("wall time iter: %5.3f s\n", (t_end_wall - t_start_wall)/1e6);
             UNUSED(t_end_wall);
         }
     }
@@ -17910,7 +17910,7 @@ static enum ggml_opt_result ggml_opt_lbfgs(
     int nx = 0;
     for (int i = 0; i < gf->n_nodes; ++i) {
         if (gf->nodes[i]->is_param) {
-            GGML_PRINT_DEBUG("found param %d: grad->op = %d\r\n", np, gf->nodes[i]->grad->op);
+            GGML_PRINT_DEBUG("found param %d: grad->op = %d\n", np, gf->nodes[i]->grad->op);
 
             GGML_ASSERT(np < GGML_MAX_PARAMS);
 
@@ -18024,7 +18024,7 @@ static enum ggml_opt_result ggml_opt_lbfgs(
         ggml_vec_norm_f32(nx, &xnorm, x);
         ggml_vec_norm_f32(nx, &gnorm, g);
 
-        GGML_PRINT_DEBUG("f = %10.6f\r\n", ggml_get_f32_1d(f, 0));
+        GGML_PRINT_DEBUG("f = %10.6f\n", ggml_get_f32_1d(f, 0));
 
         if (xnorm < 1.0f) {
             xnorm = 1.0f;
@@ -18075,7 +18075,7 @@ static enum ggml_opt_result ggml_opt_lbfgs(
         ggml_vec_sub_f32(nx, &lm_y[end[0]*nx], g, gp);
 
         // compute scalars ys and yy:
-        //     ys = y^t \cdot s    -> 1 / \rho.
+        //     ys = y^t \cdot s    -> 1 / ho.
         //     yy = y^t \cdot y.
         //
         ggml_vec_dot_f32(nx, &ys, &lm_y[end[0]*nx], &lm_s[end[0] *nx]);
@@ -18097,7 +18097,7 @@ static enum ggml_opt_result ggml_opt_lbfgs(
         j[0] = end[0];
         for (int i = 0; i < bound; ++i) {
             j[0] = (j[0] + m - 1) % m;
-            // \alpha_{j} = \rho_{j} s^{t}_{j} \cdot q_{k+1}
+            // \alpha_{j} = ho_{j} s^{t}_{j} \cdot q_{k+1}
             ggml_vec_dot_f32(nx, &lm_alpha[j[0]], &lm_s[j[0]*nx], d);
             lm_alpha[j[0]] /= lm_ys[j[0]];
             // q_{i} = q_{i+1} - \alpha_{i} y_{i}
@@ -18107,7 +18107,7 @@ static enum ggml_opt_result ggml_opt_lbfgs(
         ggml_vec_scale_f32(nx, d, ys/yy);
 
         for (int i = 0; i < bound; ++i) {
-            // \beta_{j} = \rho_{j} y^t_{j} \cdot \gamma_{i}
+            // \beta_{j} = ho_{j} y^t_{j} \cdot \gamma_{i}
             ggml_vec_dot_f32(nx, &beta, &lm_y[j[0]*nx], d);
             beta /= lm_ys[j[0]];
             // \gamma_{i+1} = \gamma_{i} + (\alpha_{j} - \beta_{j}) s_{j}

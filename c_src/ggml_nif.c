@@ -1,7 +1,7 @@
 #include <erl_nif.h>
 #include <string.h>
 
-#define PRINT(...) enif_fprintf(stdout, __VA_ARGS__) 
+#include "common.h"
 
 #include "ggml.h"
 
@@ -16,6 +16,8 @@ struct my_tensor {
 static ErlNifResourceType* GGML_CONTEXT_RESOURCE_TYPE;
 static ErlNifResourceType* GGML_TENSOR_RESOURCE_TYPE;
 
+ERL_NIF_TERM OK;
+
 static void context_dtor(ErlNifEnv* env, void* obj) {
     struct my_context* myctx = (struct my_context*)obj;
     enif_fprintf(stdout, "free ggml_context......\n");
@@ -29,6 +31,7 @@ static void tensor_dtor(ErlNifEnv* env, void* obj) {
 
 static int load(ErlNifEnv* env, void** priv, ERL_NIF_TERM load_info) {
     enif_fprintf(stdout, "loading......\n");
+    OK = enif_make_atom(env, "ok");
     GGML_CONTEXT_RESOURCE_TYPE =  enif_open_resource_type(env, "ggml", "ggml_context", context_dtor, ERL_NIF_RT_CREATE|ERL_NIF_RT_TAKEOVER, NULL);
     if (GGML_CONTEXT_RESOURCE_TYPE == NULL) return -1;
     GGML_TENSOR_RESOURCE_TYPE =  enif_open_resource_type(env, "ggml", "ggml_tensor", tensor_dtor, ERL_NIF_RT_CREATE|ERL_NIF_RT_TAKEOVER, NULL);
@@ -256,7 +259,7 @@ static ERL_NIF_TERM graph_dump_dot(ErlNifEnv* env, int argc, const ERL_NIF_TERM 
         return enif_make_badarg(env);
     }
     ggml_graph_dump_dot(&gf, NULL, filename);
-    return enif_make_atom(env, "ok");
+    return OK;
 }
 
 static ERL_NIF_TERM tensor_load(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]) {
@@ -271,7 +274,7 @@ static ERL_NIF_TERM tensor_load(ErlNifEnv* env, int argc, const ERL_NIF_TERM arg
 
     struct ggml_tensor* tensor = mytensor->tensor;
     memcpy(tensor->data, bin.data, bin.size);
-    return enif_make_atom(env, "ok");
+    return OK;
 }
 static ERL_NIF_TERM tensor_set_f32(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]) {
     struct my_tensor* mytensor;
@@ -295,7 +298,7 @@ static ERL_NIF_TERM set_param(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[
     }
     struct ggml_tensor* tensor = mytensora->tensor;
     ggml_set_param(mytensora->ctx->ctx, tensor);
-    return enif_make_atom(env, "ok");
+    return OK;
 }
 
 static ERL_NIF_TERM get_data(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]) {
@@ -334,7 +337,7 @@ static ERL_NIF_TERM set_name(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]
     enif_fprintf(stdout, "name: %s\r\n", name);
     struct ggml_tensor* tensor = mytensora->tensor;
     ggml_set_name(tensor, name);
-    return enif_make_atom(env, "ok");
+    return OK;
 }
 
 static ERL_NIF_TERM f32_sizef(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]) {
@@ -354,7 +357,7 @@ static ERL_NIF_TERM hello(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]) {
         }
         enif_fprintf(stdout, "]\r\n");
     }
-    return enif_make_atom(env, "ok");
+    return OK;
 }
 
 static ErlNifFunc nif_funcs[] = {
