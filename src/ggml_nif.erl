@@ -13,6 +13,11 @@
 -export([relu/2]).
 -export([soft_max/2]).
 -export([graph_compute/1]).
+-export([my_graph_compute/1]).
+-export([graph_build/1]).
+-export([graph_iter_node/1]).
+-export([create_compute_params/2]).
+-export([compute_forward/2]).
 -export([graph_dump_dot/2]).
 -export([set_param/1]).
 -export([nbytes/1]).
@@ -20,7 +25,7 @@
 -export([get_data/1]).
 -export([f32_sizef/0]).
 
--export_type([my_context/0, my_tensor/0]).
+-export_type([my_context/0, my_tensor/0, my_graph/0, my_compute_params/0]).
 
 -nifs([hello/1]).
 -nifs([new_tensor_f32_2d/3]).
@@ -33,6 +38,11 @@
 -nifs([relu/2]).
 -nifs([soft_max/2]).
 -nifs([graph_compute/1]).
+-nifs([my_graph_compute/1]).
+-nifs([graph_build/1]).
+-nifs([graph_iter_node/1]).
+-nifs([create_compute_params/2]).
+-nifs([compute_forward/2]).
 -nifs([graph_dump_dot/2]).
 -nifs([set_param/1]).
 -nifs([nbytes/1]).
@@ -43,6 +53,8 @@
 
 -opaque my_context() :: reference().
 -opaque my_tensor() :: reference().
+-opaque my_graph() :: reference().
+-opaque my_compute_params() :: reference().
 
 -on_load(load/0).
 
@@ -90,7 +102,27 @@ soft_max(_Ctx, _T) ->
     erlang:nif_error("NIF library not loaded").
 
 -spec graph_compute(my_tensor()) -> my_tensor().
-graph_compute(_F) ->
+graph_compute(_T) ->
+    erlang:nif_error("NIF library not loaded").
+
+-spec my_graph_compute(my_tensor()) -> my_tensor().
+my_graph_compute(_T) ->
+    erlang:nif_error("NIF library not loaded").
+
+-spec graph_build(my_tensor()) -> my_graph().
+graph_build(_T) ->
+    erlang:nif_error("NIF library not loaded").
+
+-spec graph_iter_node(my_graph()) -> {ok,my_tensor()}|{error,not_exists}.
+graph_iter_node(_Graph) ->
+    erlang:nif_error("NIF library not loaded").
+
+-spec create_compute_params(my_graph(), {non_neg_integer(),non_neg_integer()}) -> my_compute_params().
+create_compute_params(_G, {_I,_N}) ->
+    erlang:nif_error("NIF library not loaded").
+
+-spec compute_forward(my_compute_params(), my_tensor()) -> ok.
+compute_forward(_Params, _Tensor) ->
     erlang:nif_error("NIF library not loaded").
 
 -spec graph_dump_dot(my_tensor(), string()) -> ok.

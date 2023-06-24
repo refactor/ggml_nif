@@ -7867,13 +7867,16 @@ static void ggml_compute_forward_add_f32(
     const int ir0 = dr*ith;
     const int ir1 = MIN(ir0 + dr, nr);
 
+    enif_fprintf(stdout, "params: %d, %d, tensor: %p\n", params->ith, params->nth, dst);
     if (nb10 == sizeof(float)) {
+    enif_fprintf(stdout, "ir0: %d, ir1: %d\n", ir0, ir1);
         for (int ir = ir0; ir < ir1; ++ir) {
             // src0, src1 and dst are same shape => same indices
             const int i3 = ir/(ne2*ne1);
             const int i2 = (ir - i3*ne2*ne1)/ne1;
             const int i1 = (ir - i3*ne2*ne1 - i2*ne1);
 
+    enif_fprintf(stdout, "ne0=%d, i3: %d, i2: %d, i1: %d\n", ne0, i3,i2,i1);
 
 #ifdef GGML_USE_ACCELERATE
             vDSP_vadd(
