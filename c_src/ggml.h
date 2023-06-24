@@ -1424,6 +1424,7 @@ extern "C" {
     //
     // Internal types and functions exposed for tests and benchmarks
     //
+GGML_API void ggml_compute_forward(struct ggml_compute_params * params, struct ggml_tensor * tensor);
 
 #ifdef  __cplusplus
     // restrict not standard in C++
