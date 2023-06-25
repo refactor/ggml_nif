@@ -3,6 +3,7 @@
 -export([load/0]).
 -export([hello/1]).
 -export([init/1]).
+-export([new_tensor_f32_3d/4]).
 -export([new_tensor_f32_2d/3]).
 -export([new_tensor_f32_1d/2]).
 -export([tensor_load/2]).
@@ -28,6 +29,7 @@
 -export_type([my_context/0, my_tensor/0, my_graph/0, my_compute_params/0]).
 
 -nifs([hello/1]).
+-nifs([new_tensor_f32_3d/4]).
 -nifs([new_tensor_f32_2d/3]).
 -nifs([new_tensor_f32_1d/2]).
 -nifs([tensor_load/2]).
@@ -63,6 +65,10 @@ load() ->
 
 -spec init(integer()) -> my_context().
 init(_ByteSize) ->
+    erlang:nif_error("NIF library not loaded").
+
+-spec new_tensor_f32_3d(my_context(), non_neg_integer(), non_neg_integer(), non_neg_integer()) -> my_tensor().
+new_tensor_f32_3d(_Ctx, _NE0, _NE1, _NE2) ->
     erlang:nif_error("NIF library not loaded").
 
 -spec new_tensor_f32_2d(my_context(), non_neg_integer(), non_neg_integer()) -> my_tensor().

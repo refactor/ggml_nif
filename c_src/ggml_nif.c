@@ -78,17 +78,33 @@ static ERL_NIF_TERM init(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]) {
     return gtx;
 }
 
-static ERL_NIF_TERM new_tensor_1d(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[], enum ggml_type type) {
+static ERL_NIF_TERM new_tensor_(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[], enum ggml_type type) {
     struct my_context* myctx;
-    if (argc != 2 || !enif_get_resource(env, argv[0], GGML_CONTEXT_RESOURCE_TYPE, (void**)&myctx)) {
+    if (!enif_get_resource(env, argv[0], GGML_CONTEXT_RESOURCE_TYPE, (void**)&myctx)) {
         return enif_make_badarg(env);
     }
-    int64_t ne0;
-    if (!enif_get_int64(env, argv[1], &ne0)) {
-        return enif_make_badarg(env);
+
+    int64_t ne[argc - 1];
+    for (int i = 0; i < argc - 1; ++i) {
+        if (!enif_get_int64(env, argv[i+1], &ne[i])) {
+            return enif_make_badarg(env);
+        }
     }
-    enif_fprintf(stdout, "new_tensor_f32_1d......myctx: %p\n", myctx);
-    struct ggml_tensor* t = ggml_new_tensor_1d(myctx->ctx, type, ne0);
+    enif_fprintf(stdout, "new_tensor_f32_<%d>d......myctx: %p\n", argc-1, myctx);
+    struct ggml_tensor* t = NULL;
+    switch (argc) {
+        case 2:
+            t = ggml_new_tensor_1d(myctx->ctx, type, ne[0]);
+            break;
+        case 3:
+            t = ggml_new_tensor_2d(myctx->ctx, type, ne[0], ne[1]);
+            break;
+        case 4:
+            t = ggml_new_tensor_3d(myctx->ctx, type, ne[0], ne[1], ne[2]);
+            break;
+        default:
+            return enif_make_badarg(env);
+    }
 
     struct my_tensor* mytensor = enif_alloc_resource(GGML_TENSOR_RESOURCE_TYPE, sizeof(*mytensor));
     *mytensor = (struct my_tensor){
@@ -102,38 +118,18 @@ static ERL_NIF_TERM new_tensor_1d(ErlNifEnv* env, int argc, const ERL_NIF_TERM a
 }
 
 static ERL_NIF_TERM new_tensor_f32_1d(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]) {
-    return new_tensor_1d(env, argc, argv, GGML_TYPE_F32);
-}
-
-static ERL_NIF_TERM new_tensor_2d(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[], enum ggml_type type) {
-    struct my_context* myctx;
-    if (argc != 3 || !enif_get_resource(env, argv[0], GGML_CONTEXT_RESOURCE_TYPE, (void**)&myctx)) {
-        return enif_make_badarg(env);
-    }
-    int64_t ne0;
-    if (!enif_get_int64(env, argv[1], &ne0)) {
-        return enif_make_badarg(env);
-    }
-    int64_t ne1;
-    if (!enif_get_int64(env, argv[2], &ne1)) {
-        return enif_make_badarg(env);
-    }
-    enif_fprintf(stdout, "new_tensor_f32_2d......myctx: %p\n", myctx);
-    struct ggml_tensor* t = ggml_new_tensor_2d(myctx->ctx, type, ne0, ne1);
-
-    struct my_tensor* mytensor = enif_alloc_resource(GGML_TENSOR_RESOURCE_TYPE, sizeof(*mytensor));
-    *mytensor = (struct my_tensor){
-        .myctx = myctx,
-        .tensor = t
-    };
-    enif_keep_resource(myctx);
-    ERL_NIF_TERM etensor = enif_make_resource(env, mytensor);
-    enif_release_resource(mytensor);
-    return etensor;
+    if (argc != 2) return enif_make_badarg(env);
+    return new_tensor_(env, argc, argv, GGML_TYPE_F32);
 }
 
 static ERL_NIF_TERM new_tensor_f32_2d(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]) {
-    return new_tensor_2d(env, argc, argv, GGML_TYPE_F32);
+    if (argc != 3) return enif_make_badarg(env);
+    return new_tensor_(env, argc, argv, GGML_TYPE_F32);
+}
+
+static ERL_NIF_TERM new_tensor_f32_3d(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]) {
+    if (argc != 4) return enif_make_badarg(env);
+    return new_tensor_(env, argc, argv, GGML_TYPE_F32);
 }
 
 static ERL_NIF_TERM add(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]) {
@@ -475,6 +471,7 @@ static ErlNifFunc nif_funcs[] = {
     {"init", 1, init, ERL_NIF_DIRTY_JOB_IO_BOUND},
     {"new_tensor_f32_1d", 2, new_tensor_f32_1d},
     {"new_tensor_f32_2d", 3, new_tensor_f32_2d},
+    {"new_tensor_f32_3d", 4, new_tensor_f32_3d},
     {"tensor_set_f32", 2, tensor_set_f32},
     {"tensor_load", 2, tensor_load},
     {"add", 3, add},
@@ -489,7 +486,7 @@ static ErlNifFunc nif_funcs[] = {
     {"graph_build", 1, graph_build},
     {"graph_iter_node", 1, graph_iter_node},
     {"create_compute_params", 2, create_compute_params},
-    {"compute_forward", 2, compute_forward},
+    {"compute_forward", 2, compute_forward, ERL_NIF_DIRTY_JOB_CPU_BOUND},
     {"graph_compute", 1, graph_compute, ERL_NIF_DIRTY_JOB_CPU_BOUND},
     {"graph_dump_dot", 2, graph_dump_dot},
     {"f32_sizef", 0, f32_sizef},

@@ -40,7 +40,7 @@ callback_mode() ->
 
 init(Tensor) ->
     %Graph = ggml_nif:graph_build(Tensor),
-    N = erlang:system_info(logical_processors),
+    N = erlang:system_info(dirty_cpu_schedulers),
     io:format("nthread: ~p~n", [N]),
     Graph = ggml_nif:graph_build(Tensor),
 	{ok, next_node, #state{nthread=N, tensor=Tensor, cgraph=Graph}, []}.
