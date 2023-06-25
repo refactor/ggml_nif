@@ -3,6 +3,7 @@
 
 #include "common.h"
 
+#include "ggml.h"
 #include "my_ggml.h"
 
 struct my_context {
@@ -13,6 +14,7 @@ struct my_tensor {
     struct ggml_tensor* tensor;
 };
 struct my_cgraph {
+    struct my_context* workctx;
     struct my_tensor* output;
     struct ggml_cgraph cgraph;
     int current_node;
@@ -41,6 +43,7 @@ static void cgraph_dtor(ErlNifEnv* env, void* obj) {
     struct my_cgraph* cgraph = (struct my_cgraph*)obj;
     enif_fprintf(stdout, "free cgraph...\n");
     enif_release_resource(cgraph->output);
+    if (cgraph->workctx) enif_release_resource(cgraph->workctx);
 }
 
 static int load(ErlNifEnv* env, void** priv, ERL_NIF_TERM load_info) {
@@ -278,6 +281,32 @@ static ERL_NIF_TERM graph_build(ErlNifEnv* env, int argc, const ERL_NIF_TERM arg
     return cg;
 }
 
+static ERL_NIF_TERM graph_init_workbuf(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]) {
+    struct my_cgraph* mygraph;
+    if (!enif_get_resource(env, argv[0], GGML_CGRAPH_RESOURCE_TYPE, (void**)&mygraph)) {
+        return enif_make_badarg(env);
+    }
+
+    struct ggml_cgraph* cgraph = &mygraph->cgraph;
+    my_init_task_and_workbuf(cgraph);
+    if (cgraph->work_size > 0 && cgraph->work == NULL) {
+        if (mygraph->workctx == NULL) {
+            struct ggml_context* ctx = ggml_init((struct ggml_init_params){.mem_size=1024 + cgraph->work_size});
+            struct my_context* myctx = enif_alloc_resource(GGML_CONTEXT_RESOURCE_TYPE, sizeof(*myctx));
+            *myctx = (struct my_context) {
+                .ctx = ctx
+            };
+            enif_make_resource(env, myctx);
+            enif_release_resource(myctx);
+
+            mygraph->workctx = myctx;
+        }
+        struct ggml_context* ctx = mygraph->workctx->ctx;
+        cgraph->work = ggml_new_tensor_1d(ctx, GGML_TYPE_I8, cgraph->work_size);
+    }
+    return argv[0];
+}
+
 static ERL_NIF_TERM graph_iter_node(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]) {
     struct my_cgraph* mygraph;
     if (!enif_get_resource(env, argv[0], GGML_CGRAPH_RESOURCE_TYPE, (void**)&mygraph)) {
@@ -484,6 +513,7 @@ static ErlNifFunc nif_funcs[] = {
     {"set_name", 2, set_name},
     {"get_data", 1, get_data},
     {"graph_build", 1, graph_build},
+    {"graph_init_workbuf", 1, graph_init_workbuf},
     {"graph_iter_node", 1, graph_iter_node},
     {"create_compute_params", 2, create_compute_params},
     {"compute_forward", 2, compute_forward, ERL_NIF_DIRTY_JOB_CPU_BOUND},

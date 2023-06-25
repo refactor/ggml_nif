@@ -14,7 +14,7 @@
 -export([relu/2]).
 -export([soft_max/2]).
 -export([graph_compute/1]).
--export([my_graph_compute/1]).
+-export([graph_init_workbuf/1]).
 -export([graph_build/1]).
 -export([graph_iter_node/1]).
 -export([create_compute_params/2]).
@@ -40,7 +40,7 @@
 -nifs([relu/2]).
 -nifs([soft_max/2]).
 -nifs([graph_compute/1]).
--nifs([my_graph_compute/1]).
+-nifs([graph_init_workbuf/1]).
 -nifs([graph_build/1]).
 -nifs([graph_iter_node/1]).
 -nifs([create_compute_params/2]).
@@ -111,8 +111,8 @@ soft_max(_Ctx, _T) ->
 graph_compute(_T) ->
     erlang:nif_error("NIF library not loaded").
 
--spec my_graph_compute(my_tensor()) -> my_tensor().
-my_graph_compute(_T) ->
+-spec graph_init_workbuf(my_tensor()) -> my_tensor().
+graph_init_workbuf(_T) ->
     erlang:nif_error("NIF library not loaded").
 
 -spec graph_build(my_tensor()) -> my_graph().

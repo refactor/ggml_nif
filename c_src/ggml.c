@@ -16576,12 +16576,12 @@ static thread_ret_t ggml_graph_compute_thread(void * data) {
     return 0;
 }
 
-static void my_init_task_and_workbuf_(struct ggml_context * ctx, struct ggml_cgraph * cgraph, const int n_threads); 
-void my_init_task_and_workbuf(struct ggml_context * ctx, struct ggml_cgraph * cgraph) {
-    my_init_task_and_workbuf_(ctx, cgraph, cgraph->n_threads);
+static void my_init_task_and_workbuf_(struct ggml_cgraph * cgraph, const int n_threads); 
+void my_init_task_and_workbuf(struct ggml_cgraph * cgraph) {
+    my_init_task_and_workbuf_(cgraph, cgraph->n_threads);
 } 
 
-static void my_init_task_and_workbuf_(struct ggml_context * ctx, struct ggml_cgraph * cgraph, const int n_threads) 
+static void my_init_task_and_workbuf_(struct ggml_cgraph * cgraph, const int n_threads) 
     // initialize tasks + work buffer
     {
         size_t work_size = 0;
@@ -16922,9 +16922,6 @@ static void my_init_task_and_workbuf_(struct ggml_context * ctx, struct ggml_cgr
 
         if (work_size > 0 && cgraph->work == NULL) {
             cgraph->work_size = work_size + CACHE_LINE_SIZE*(n_threads - 1);
-
-            GGML_PRINT_DEBUG("%s: allocating work buffer for graph (%zu bytes)\n", __func__, cgraph->work_size);
-            cgraph->work = ggml_new_tensor_1d(ctx, GGML_TYPE_I8, cgraph->work_size);
         }
     }
 
@@ -16966,7 +16963,11 @@ void ggml_graph_compute(struct ggml_context * ctx, struct ggml_cgraph * cgraph) 
         }
     }
 
-    my_init_task_and_workbuf(ctx, cgraph);
+    my_init_task_and_workbuf(cgraph);
+    if (cgraph->work_size > 0 && cgraph->work == NULL) {
+        GGML_PRINT_DEBUG("%s: allocating work buffer for graph (%zu bytes)\n", __func__, cgraph->work_size);
+        cgraph->work = ggml_new_tensor_1d(ctx, GGML_TYPE_I8, cgraph->work_size);
+    }
 
     const int64_t perf_start_cycles  = ggml_perf_cycles();
     const int64_t perf_start_time_us = ggml_perf_time_us();

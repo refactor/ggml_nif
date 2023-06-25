@@ -43,6 +43,7 @@ init(Tensor) ->
     N = erlang:system_info(dirty_cpu_schedulers),
     io:format("nthread: ~p~n", [N]),
     Graph = ggml_nif:graph_build(Tensor),
+    ggml_nif:graph_init_workbuf(Graph),
 	{ok, next_node, #state{nthread=N, tensor=Tensor, cgraph=Graph}, []}.
 
 node_part_computed(info, {node_partition, I}, #state{node_partitions=NP,nthread=N}=StateData) ->
