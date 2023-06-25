@@ -1,12 +1,12 @@
 @startuml
 participant "Main" as Main
-participant "graph_compute" as Thread0 <<(T,#add1b2)thread>>
-participant "graph_compute_thread" as Thread_j <<(T,#add1b2)thread>>
-participant "compute_sate" as ComputeState <<(S,#fdd1b2)state>>
-participant "state_shared" as StateShared <<(S,#fff1b2)state>>
-participant "compute_graph" as ComputeGraph <<(C,#ee8866)data>>
-participant "compute_params" as ComputeParams <<(P,#fdd1b2)params>>
-participant "compute_params" as ComputeParams0 <<(P,#fdd1b2)params0>>
+control "graph_compute" as Thread0 <<(T,#add1b2)thread>>
+collections "graph_compute_thread" as Thread_j <<(T,#add1b2)thread>>
+collections "compute_sate" as ComputeState <<(S,#fdd1b2)state>>
+queue "state_shared" as StateShared <<(S,#fff1b2)state>>
+entity "compute_params" as ComputeParams <<(P,#fdd1b2)params>>
+entity "compute_params" as ComputeParams0 <<(P,#fdd1b2)params0>>
+database "compute_graph" as ComputeGraph <<(C,#ee8866)tensors>>
 hide footbox
 
 create ComputeGraph
@@ -22,10 +22,10 @@ alt#Gold #Pink n_threads > 1
   loop #LightBlue j:1..nthread-1
     note over ComputeState,StateShared: bind state_shared
     create ComputeState
-    Thread0 -> ComputeState: set compute_state for every worker
-    ComputeState -> ComputeGraph: set work-buffer(wsize/wdata) from 
+    Thread0 -> ComputeState: for every worker
+    ComputeState -> ComputeGraph: set work-buffer from 
     create Thread_j
-    Thread0 -> Thread_j: create worker thread
+    Thread0 -> Thread_j: start worker
     Thread_j -> StateShared: try lock
     Thread_j o-\o StateShared: wait for work
   end
@@ -41,6 +41,7 @@ alt work_size > 0
 end
 
 loop #LightGreen node: compute_graph
+  Thread0 -> ComputeGraph: iter node
   create ComputeParams0
   Thread0 -> ComputeParams0: set GGML_TASK_INIT, n_tasks from node, work from compute_graph
   Thread0 -> Thread0: ggml_compute_forward(params, node)
@@ -74,7 +75,7 @@ Thread0 -> Thread0: GGML_TASK_COMPUTE
     Thread0 ->o StateShared: spin: wait all workers
     note over Thread0,Thread_j: launch thread pool
     Thread0 -> ComputeParams: set GGML_TASK_FINALIZE for every worker
-    Thread0 -> ComputeState: set node for every worker
+    Thread0 -> ComputeState: set node for every worker, seems unnecessary
     note over Thread0,Thread_j: sync
     Thread0 ->o StateShared: sync
   end
