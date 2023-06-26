@@ -5,6 +5,7 @@
 
 #include "ggml.h"
 #include "my_ggml.h"
+#include "mylog.h"
 
 struct my_context {
     struct ggml_context* ctx;
@@ -33,23 +34,23 @@ ERL_NIF_TERM FALSE;
 
 static void context_dtor(ErlNifEnv* env, void* obj) {
     struct my_context* myctx = (struct my_context*)obj;
-    enif_fprintf(stdout, "FREE ggml_context......%p\n", myctx);
+    DBG("FREE ggml_context......%p", myctx);
     ggml_free(myctx->ctx);
 }
 static void tensor_dtor(ErlNifEnv* env, void* obj) {
     struct my_tensor* mytensor = (struct my_tensor*)obj;
-    enif_fprintf(stdout, "free ggml_tensor(%s: %p), in myctx(%p)......\n", mytensor->tensor->name, mytensor->tensor, mytensor->myctx);
+    DBG("free ggml_tensor(%s: %p), in myctx(%p)......", mytensor->tensor->name, mytensor->tensor, mytensor->myctx);
     if (mytensor->myctx) enif_release_resource(mytensor->myctx);
 }
 static void cgraph_dtor(ErlNifEnv* env, void* obj) {
     struct my_cgraph* cgraph = (struct my_cgraph*)obj;
-    enif_fprintf(stdout, "free cgraph...\n");
+    DBG("free cgraph...");
     enif_release_resource(cgraph->output);
     if (cgraph->workctx) enif_release_resource(cgraph->workctx);
 }
 
 static int load(ErlNifEnv* env, void** priv, ERL_NIF_TERM load_info) {
-    enif_fprintf(stdout, "loading......\n");
+    DBG("loading......");
     OK = enif_make_atom(env, "ok");
     ERROR = enif_make_atom(env, "error");
     NOT_EXISTS = enif_make_atom(env, "not_exists");
@@ -98,7 +99,7 @@ static ERL_NIF_TERM new_tensor_(ErlNifEnv* env, int argc, const ERL_NIF_TERM arg
             return enif_make_badarg(env);
         }
     }
-    enif_fprintf(stdout, "new_tensor_f32_<%d>d......myctx: %p\n", argc-1, myctx);
+    DBG("new_tensor_f32_<%d>d......myctx: %p", argc-1, myctx);
     struct ggml_tensor* t = NULL;
     switch (argc) {
         case 2:
@@ -289,7 +290,7 @@ static ERL_NIF_TERM build_forward(ErlNifEnv* env, int argc, const ERL_NIF_TERM a
 
     ErlDrvSysInfo sysinfo;
     enif_system_info(&sysinfo, sizeof(sysinfo));
-    enif_fprintf(stdout, "enif_system_info: scheduler_threads=%d\n", sysinfo.scheduler_threads);
+    DBG("enif_system_info: scheduler_threads=%d", sysinfo.scheduler_threads);
     struct my_cgraph* mygraph = enif_alloc_resource(GGML_CGRAPH_RESOURCE_TYPE, sizeof(*mygraph));
     *mygraph = (struct my_cgraph) {
         .output = mytensorf,
@@ -299,7 +300,7 @@ static ERL_NIF_TERM build_forward(ErlNifEnv* env, int argc, const ERL_NIF_TERM a
         }
     };
     ggml_build_forward_expand(&mygraph->cgraph, mytensorf->tensor);
-    enif_fprintf(stdout, " for cgraph: scheduler_threads=%d\n", mygraph->cgraph.n_threads);
+    DBG(" for cgraph: scheduler_threads=%d", mygraph->cgraph.n_threads);
     enif_keep_resource(mytensorf);
     ERL_NIF_TERM cg = enif_make_resource(env, mygraph);
     enif_release_resource(mygraph);
@@ -395,7 +396,7 @@ static ERL_NIF_TERM node_compute_params(ErlNifEnv* env, int argc, const ERL_NIF_
         return enif_make_badarg(env);
     }
     int n_tasks = node->tensor->n_tasks;
-    enif_fprintf(stdout, "node->n_tasks: %d\n", node->tensor->n_tasks);
+    DBG("node->n_tasks: %d", node->tensor->n_tasks);
     ERL_NIF_TERM arr[n_tasks];
     ERL_NIF_TERM NTASKS = enif_make_int(env, n_tasks);
     for (int i = 0; i < n_tasks; ++i) {
@@ -443,7 +444,7 @@ static ERL_NIF_TERM compute_forward(ErlNifEnv* env, int argc, const ERL_NIF_TERM
         return enif_make_badarg(env);
     }
     struct ggml_tensor* tensor = mytensorf->tensor;
-    enif_fprintf(stdout, "params: %d, %d, tensor: %p\n", params->ith, params->nth, tensor);
+    DBG("params: %d, %d, tensor: %p", params->ith, params->nth, tensor);
     ggml_compute_forward(params, mytensorf->tensor);
     return OK;
 }
@@ -519,7 +520,7 @@ static ERL_NIF_TERM grad_set_f32(ErlNifEnv* env, int argc, const ERL_NIF_TERM ar
 static ERL_NIF_TERM set_param(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]) {
     struct my_tensor* mytensora;
     if (argc != 1 && argc != 2) {
-        enif_fprintf(stderr, "wrong argc: %d\n", argc);
+        enif_fprintf(stderr, "wrong argc: %d", argc);
         return enif_make_badarg(env);
     }
     if (!enif_get_resource(env, argv[argc - 1], GGML_TENSOR_RESOURCE_TYPE, (void**)&mytensora)) {
@@ -585,7 +586,7 @@ static ERL_NIF_TERM set_name(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]
     if (!enif_get_string(env, argv[1], name, sizeof(name), ERL_NIF_LATIN1)) {
         return enif_make_badarg(env);
     }
-    enif_fprintf(stdout, "name: %s\r\n", name);
+    DBG("name: %s", name);
     struct ggml_tensor* tensor = mytensora->tensor;
     ggml_set_name(tensor, name);
     return OK;
@@ -602,11 +603,11 @@ static ERL_NIF_TERM hello(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]) {
     ggml_print_objects(mytensora->myctx->ctx);
     struct ggml_tensor* tensor = mytensora->tensor;
     for (int i = 0; i < tensor->n_dims; ++i) {
-        enif_fprintf(stdout, "data(%p)[%d]: [", tensor->data, tensor->nb[0]);
+        DBG("data(%p)[%d]: [", tensor->data, tensor->nb[0]);
         for (int j = 0; j < tensor->ne[i]; ++j) {
-            enif_fprintf(stdout, "%f, ", *(float*)(tensor->data + j * tensor->nb[i]));
+            DBG("%f, ", *(float*)(tensor->data + j * tensor->nb[i]));
         }
-        enif_fprintf(stdout, "]\r\n");
+        DBG("]");
     }
     return OK;
 }
