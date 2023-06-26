@@ -8,22 +8,27 @@
 -export([new_tensor_f32_1d/2]).
 -export([tensor_load/2]).
 -export([tensor_set_f32/2]).
+-export([grad_set_f32/2]).
 -export([add/3]).
 -export([mul/3]).
 -export([mul_mat/3]).
 -export([relu/2]).
+-export([sum/2]).
 -export([soft_max/2]).
 -export([graph_compute/1]).
 -export([graph_init_workbuf/1]).
--export([graph_build/1]).
+-export([build_forward/1]).
+-export([build_backward/3]).
+-export([graph_reset/1]).
 -export([graph_iter_node/1]).
 -export([create_compute_params/2]).
 -export([compute_forward/2]).
 -export([graph_dump_dot/2]).
--export([set_param/1]).
+-export([set_param/1, set_param/2]).
 -export([nbytes/1]).
 -export([set_name/2]).
 -export([get_data/1]).
+-export([get_grad/1]).
 -export([f32_sizef/0]).
 
 -export_type([my_context/0, my_tensor/0, my_graph/0, my_compute_params/0]).
@@ -34,24 +39,31 @@
 -nifs([new_tensor_f32_1d/2]).
 -nifs([tensor_load/2]).
 -nifs([tensor_set_f32/2]).
+-nifs([grad_set_f32/2]).
 -nifs([add/3]).
 -nifs([mul/3]).
 -nifs([mul_mat/3]).
 -nifs([relu/2]).
+-nifs([sum/2]).
 -nifs([soft_max/2]).
 -nifs([graph_compute/1]).
 -nifs([graph_init_workbuf/1]).
--nifs([graph_build/1]).
+-nifs([build_forward/1]).
+-nifs([build_backward/3]).
+-nifs([graph_reset/1]).
 -nifs([graph_iter_node/1]).
 -nifs([create_compute_params/2]).
 -nifs([compute_forward/2]).
 -nifs([graph_dump_dot/2]).
--nifs([set_param/1]).
+-nifs([set_param/1, set_param/2]).
 -nifs([nbytes/1]).
 -nifs([set_name/2]).
 -nifs([get_data/1]).
+-nifs([get_grad/1]).
 -nifs([f32_sizef/0]).
 -nifs([init/1]).
+
+-deprecated({graph_compute, 1, "just for test, using gen_statem instead"}).
 
 -opaque my_context() :: reference().
 -opaque my_tensor() :: reference().
@@ -87,6 +99,10 @@ tensor_load(_T, _Bin) ->
 tensor_set_f32(_T, _V) ->
     erlang:nif_error("NIF library not loaded").
 
+-spec grad_set_f32(my_tensor(), float()) -> my_tensor().
+grad_set_f32(_T, _V) ->
+    erlang:nif_error("NIF library not loaded").
+
 -spec add(my_context(), my_tensor(), my_tensor()) -> my_tensor().
 add(_Ctx, _A, _B) ->
     erlang:nif_error("NIF library not loaded").
@@ -107,7 +123,11 @@ relu(_Ctx, _T) ->
 soft_max(_Ctx, _T) ->
     erlang:nif_error("NIF library not loaded").
 
--spec graph_compute(my_tensor()) -> my_tensor().
+-spec sum(my_context(), my_tensor()) -> my_tensor().
+sum(_Ctx, _T) ->
+    erlang:nif_error("NIF library not loaded").
+
+-spec graph_compute(my_graph()) -> my_tensor().
 graph_compute(_T) ->
     erlang:nif_error("NIF library not loaded").
 
@@ -115,8 +135,16 @@ graph_compute(_T) ->
 graph_init_workbuf(_T) ->
     erlang:nif_error("NIF library not loaded").
 
--spec graph_build(my_tensor()) -> my_graph().
-graph_build(_T) ->
+-spec build_forward(my_tensor()) -> my_graph().
+build_forward(_T) ->
+    erlang:nif_error("NIF library not loaded").
+
+-spec build_backward(my_context(), my_tensor(), boolean()) -> my_graph().
+build_backward(_Ctx, _T, _Keep) ->
+    erlang:nif_error("NIF library not loaded").
+
+-spec graph_reset(my_graph()) -> ok.
+graph_reset(_Graph) ->
     erlang:nif_error("NIF library not loaded").
 
 -spec graph_iter_node(my_graph()) -> {ok,my_tensor()}|{error,not_exists}.
@@ -135,8 +163,12 @@ compute_forward(_Params, _Tensor) ->
 graph_dump_dot(_T, _F) ->
     erlang:nif_error("NIF library not loaded").
 
+-spec set_param(my_context(), my_tensor()) -> ok.
+set_param(_Ctx, _T) ->
+    erlang:nif_error("NIF library not loaded").
+
 -spec set_param(my_tensor()) -> ok.
-set_param(_F) ->
+set_param(_T) ->
     erlang:nif_error("NIF library not loaded").
 
 -spec nbytes(my_tensor()) -> non_neg_integer().
@@ -149,6 +181,10 @@ set_name(_T, _Name) ->
 
 -spec get_data(my_tensor()) -> binary().
 get_data(_T) ->
+    erlang:nif_error("NIF library not loaded").
+
+-spec get_grad(my_tensor()) -> binary().
+get_grad(_T) ->
     erlang:nif_error("NIF library not loaded").
 
 -spec f32_sizef() -> float().

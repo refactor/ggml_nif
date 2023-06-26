@@ -16,7 +16,8 @@ do_compute(L, A, B) ->
     V2 = ggml_nif:new_tensor_f32_1d(Ctx, L),
     ggml_nif:tensor_set_f32(V2, B),
     V = ggml_nif:add(Ctx, V1, V2),
-    ggml_nif:graph_compute(V),
+    CGraph = ggml_nif:build_forward(V),
+    ggml_nif:graph_compute(CGraph),
     Result = ggml_nif:get_data(V),
     Result.
 
@@ -30,7 +31,7 @@ build_adder(L, A, B) ->
     V2 = ggml_nif:new_tensor_f32_1d(Ctx, L),
     ggml_nif:tensor_set_f32(V2, B),
     V = ggml_nif:add(Ctx, V1, V2),
-    ggml_nif:graph_build(V).
+    ggml_nif:build_forward(V).
 
 build_mul(A, B) ->
     NInput = 100,
@@ -45,4 +46,3 @@ build_mul(A, B) ->
     {ok, Pid} = cgraph_computer:start_link(V),
     Bin = cgraph_computer:do_compute(Pid),
     Bin.
-    %ggml_nif:graph_build(V).

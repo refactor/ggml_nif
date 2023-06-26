@@ -42,7 +42,7 @@ init(Tensor) ->
     %Graph = ggml_nif:graph_build(Tensor),
     N = erlang:system_info(dirty_cpu_schedulers),
     io:format("nthread: ~p~n", [N]),
-    Graph = ggml_nif:graph_build(Tensor),
+    Graph = ggml_nif:build_forward(Tensor),
     ggml_nif:graph_init_workbuf(Graph),
 	{ok, next_node, #state{nthread=N, tensor=Tensor, cgraph=Graph}, []}.
 

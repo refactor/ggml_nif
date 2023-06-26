@@ -28,10 +28,12 @@ static ErlNifResourceType* GGML_CPARAMS_RESOURCE_TYPE;
 ERL_NIF_TERM OK;
 ERL_NIF_TERM ERROR;
 ERL_NIF_TERM NOT_EXISTS;
+ERL_NIF_TERM TRUE;
+ERL_NIF_TERM FALSE;
 
 static void context_dtor(ErlNifEnv* env, void* obj) {
     struct my_context* myctx = (struct my_context*)obj;
-    enif_fprintf(stdout, "free ggml_context......%p\n", myctx);
+    enif_fprintf(stdout, "FREE ggml_context......%p\n", myctx);
     ggml_free(myctx->ctx);
 }
 static void tensor_dtor(ErlNifEnv* env, void* obj) {
@@ -51,6 +53,9 @@ static int load(ErlNifEnv* env, void** priv, ERL_NIF_TERM load_info) {
     OK = enif_make_atom(env, "ok");
     ERROR = enif_make_atom(env, "error");
     NOT_EXISTS = enif_make_atom(env, "not_exists");
+    TRUE = enif_make_atom(env, "true");
+    FALSE = enif_make_atom(env, "false");
+
     GGML_CONTEXT_RESOURCE_TYPE =  enif_open_resource_type(env, "ggml", "ggml_context", context_dtor, ERL_NIF_RT_CREATE|ERL_NIF_RT_TAKEOVER, NULL);
     if (GGML_CONTEXT_RESOURCE_TYPE == NULL) return -1;
     GGML_TENSOR_RESOURCE_TYPE =  enif_open_resource_type(env, "ggml", "ggml_tensor", tensor_dtor, ERL_NIF_RT_CREATE|ERL_NIF_RT_TAKEOVER, NULL);
@@ -156,8 +161,6 @@ static ERL_NIF_TERM add(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]) {
         .tensor = m
     };
     enif_keep_resource(myctx);
-    enif_keep_resource(mytensora);
-    enif_keep_resource(mytensorb);
     ERL_NIF_TERM etensor = enif_make_resource(env, mytensor);
     enif_release_resource(mytensor);
     return etensor;
@@ -184,8 +187,6 @@ static ERL_NIF_TERM mul(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]) {
         .tensor = m
     };
     enif_keep_resource(myctx);
-    enif_keep_resource(mytensora);
-    enif_keep_resource(mytensorb);
     ERL_NIF_TERM etensor = enif_make_resource(env, mytensor);
     enif_release_resource(mytensor);
     return etensor;
@@ -212,8 +213,6 @@ static ERL_NIF_TERM mul_mat(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
         .tensor = m
     };
     enif_keep_resource(myctx);
-    enif_keep_resource(mytensora);
-    enif_keep_resource(mytensorb);
     ERL_NIF_TERM etensor = enif_make_resource(env, mytensor);
     enif_release_resource(mytensor);
     return etensor;
@@ -235,7 +234,27 @@ static ERL_NIF_TERM relu(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]) {
         .tensor = result
     };
     enif_keep_resource(myctx);
-    enif_keep_resource(mytensora);
+    ERL_NIF_TERM etensor = enif_make_resource(env, mytensor);
+    enif_release_resource(mytensor);
+    return etensor;
+}
+
+static ERL_NIF_TERM sum(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]) {
+    struct my_context* myctx;
+    if (argc != 2 || !enif_get_resource(env, argv[0], GGML_CONTEXT_RESOURCE_TYPE, (void**)&myctx)) {
+        return enif_make_badarg(env);
+    }
+    struct my_tensor* mytensora;
+    if (!enif_get_resource(env, argv[1], GGML_TENSOR_RESOURCE_TYPE, (void**)&mytensora)) {
+        return enif_make_badarg(env);
+    }
+    struct ggml_tensor* result = ggml_sum(myctx->ctx, mytensora->tensor);
+    struct my_tensor* mytensor = enif_alloc_resource(GGML_TENSOR_RESOURCE_TYPE, sizeof(*mytensor));
+    *mytensor = (struct my_tensor) {
+        .myctx = myctx,
+        .tensor = result
+    };
+    enif_keep_resource(myctx);
     ERL_NIF_TERM etensor = enif_make_resource(env, mytensor);
     enif_release_resource(mytensor);
     return etensor;
@@ -257,13 +276,12 @@ static ERL_NIF_TERM soft_max(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]
         .tensor = result
     };
     enif_keep_resource(myctx);
-    enif_keep_resource(mytensora);
     ERL_NIF_TERM etensor = enif_make_resource(env, mytensor);
     enif_release_resource(mytensor);
     return etensor;
 }
 
-static ERL_NIF_TERM graph_build(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]) {
+static ERL_NIF_TERM build_forward(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]) {
     struct my_tensor* mytensorf;
     if (!enif_get_resource(env, argv[0], GGML_TENSOR_RESOURCE_TYPE, (void**)&mytensorf)) {
         return enif_make_badarg(env);
@@ -280,6 +298,41 @@ static ERL_NIF_TERM graph_build(ErlNifEnv* env, int argc, const ERL_NIF_TERM arg
     enif_release_resource(mygraph);
     return cg;
 }
+
+static ERL_NIF_TERM build_backward(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]) {
+    struct my_context* myctx;
+    if (!enif_get_resource(env, argv[0], GGML_CONTEXT_RESOURCE_TYPE, (void**)&myctx)) {
+        return enif_make_badarg(env);
+    }
+    struct my_cgraph* mygraph;
+    if (!enif_get_resource(env, argv[1], GGML_CGRAPH_RESOURCE_TYPE, (void**)&mygraph)) {
+        return enif_make_badarg(env);
+    }
+
+    bool keep = enif_is_identical(TRUE, argv[2]); 
+
+    struct my_cgraph* mygb = enif_alloc_resource(GGML_CGRAPH_RESOURCE_TYPE, sizeof(*mygraph));
+    *mygb = (struct my_cgraph) {
+        .current_node = 0,
+        .workctx = NULL,
+        .output = NULL,
+    };
+    mygb->cgraph = ggml_build_backward(myctx->ctx, &mygraph->cgraph, keep);
+    enif_keep_resource(mygb);
+    ERL_NIF_TERM cg = enif_make_resource(env, mygb);
+    enif_release_resource(mygb);
+    return cg;
+}
+
+static ERL_NIF_TERM graph_reset(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]) {
+    struct my_cgraph* mygraph;
+    if (!enif_get_resource(env, argv[0], GGML_CGRAPH_RESOURCE_TYPE, (void**)&mygraph)) {
+        return enif_make_badarg(env);
+    }
+    ggml_graph_reset(&mygraph->cgraph);
+    return OK;
+}
+
 
 static ERL_NIF_TERM graph_init_workbuf(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]) {
     struct my_cgraph* mygraph;
@@ -374,13 +427,14 @@ static ERL_NIF_TERM compute_forward(ErlNifEnv* env, int argc, const ERL_NIF_TERM
 }
 
 static ERL_NIF_TERM graph_compute(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]) {
-    struct my_tensor* mytensorf;
-    if (!enif_get_resource(env, argv[0], GGML_TENSOR_RESOURCE_TYPE, (void**)&mytensorf)) {
+    struct my_cgraph* mygraph;
+    if (!enif_get_resource(env, argv[0], GGML_CGRAPH_RESOURCE_TYPE, (void**)&mygraph)) {
         return enif_make_badarg(env);
     }
 
-    struct ggml_cgraph gf = ggml_build_forward(mytensorf->tensor);
-    ggml_graph_compute(mytensorf->myctx->ctx, &gf);
+    struct ggml_cgraph* cgraph = &mygraph->cgraph;
+    ggml_graph_compute(NULL, &mygraph->cgraph);
+
     return argv[0];
 }
 
@@ -427,13 +481,36 @@ static ERL_NIF_TERM tensor_set_f32(ErlNifEnv* env, int argc, const ERL_NIF_TERM 
     return argv[0];
 }
 
-static ERL_NIF_TERM set_param(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]) {
-    struct my_tensor* mytensora;
-    if (argc != 1 || !enif_get_resource(env, argv[0], GGML_TENSOR_RESOURCE_TYPE, (void**)&mytensora)) {
+static ERL_NIF_TERM grad_set_f32(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]) {
+    struct my_tensor* mytensor;
+    if (!enif_get_resource(env, argv[0], GGML_TENSOR_RESOURCE_TYPE, (void**)&mytensor)) {
         return enif_make_badarg(env);
     }
+    double value;
+    if (!enif_get_double(env, argv[1], &value)) {
+        return enif_make_badarg(env);
+    }
+    ggml_set_f32(mytensor->tensor->grad, (float)value);
+    return OK;
+}
+
+static ERL_NIF_TERM set_param(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]) {
+    struct my_tensor* mytensora;
+    if (argc != 1 && argc != 2) {
+        enif_fprintf(stderr, "wrong argc: %d\n", argc);
+        return enif_make_badarg(env);
+    }
+    if (!enif_get_resource(env, argv[argc - 1], GGML_TENSOR_RESOURCE_TYPE, (void**)&mytensora)) {
+        return enif_make_badarg(env);
+    }
+    struct my_context* myctx = mytensora->myctx;
+    if (argc == 2) {
+        if (!enif_get_resource(env, argv[0], GGML_CONTEXT_RESOURCE_TYPE, (void**)&myctx)) {
+            return enif_make_badarg(env);
+        }
+    }
     struct ggml_tensor* tensor = mytensora->tensor;
-    ggml_set_param(mytensora->myctx->ctx, tensor);
+    ggml_set_param(myctx->ctx, tensor);
     return OK;
 }
 
@@ -449,6 +526,22 @@ static ERL_NIF_TERM get_data(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]
         .data = data
     };
     return enif_make_binary(env, &bin);
+}
+
+static ERL_NIF_TERM get_grad(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]) {
+    struct my_tensor* mytensora;
+    if (argc != 1 || !enif_get_resource(env, argv[0], GGML_TENSOR_RESOURCE_TYPE, (void**)&mytensora)) {
+        return enif_make_badarg(env);
+    }
+    struct ggml_tensor* tensor = mytensora->tensor;
+    struct my_tensor* mygrad = enif_alloc_resource(GGML_TENSOR_RESOURCE_TYPE, sizeof(*mygrad));
+    *mygrad = (struct my_tensor) {
+        .tensor = tensor->grad,
+        .myctx = NULL
+    };
+    ERL_NIF_TERM etensor = enif_make_resource(env, mygrad);
+    enif_release_resource(mygrad);
+    return etensor;
 }
 
 static ERL_NIF_TERM nbytes(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]) {
@@ -502,17 +595,23 @@ static ErlNifFunc nif_funcs[] = {
     {"new_tensor_f32_2d", 3, new_tensor_f32_2d},
     {"new_tensor_f32_3d", 4, new_tensor_f32_3d},
     {"tensor_set_f32", 2, tensor_set_f32},
+    {"grad_set_f32", 2, grad_set_f32},
     {"tensor_load", 2, tensor_load},
     {"add", 3, add},
     {"mul", 3, mul},
     {"mul_mat", 3, mul_mat},
     {"relu", 2, relu},
+    {"sum", 2, sum},
     {"soft_max", 2, soft_max},
     {"set_param", 1, set_param},
+    {"set_param", 2, set_param},
     {"nbytes", 1, nbytes},
     {"set_name", 2, set_name},
     {"get_data", 1, get_data},
-    {"graph_build", 1, graph_build},
+    {"get_grad", 1, get_grad},
+    {"build_forward", 1, build_forward},
+    {"build_backward", 3, build_backward},
+    {"graph_reset", 1, graph_reset},
     {"graph_init_workbuf", 1, graph_init_workbuf},
     {"graph_iter_node", 1, graph_iter_node},
     {"create_compute_params", 2, create_compute_params},
