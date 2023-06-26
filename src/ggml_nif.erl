@@ -21,6 +21,7 @@
 -export([build_backward/3]).
 -export([graph_reset/1]).
 -export([graph_iter_node/1]).
+-export([node_compute_params/1]).
 -export([create_compute_params/2]).
 -export([compute_forward/2]).
 -export([graph_dump_dot/2]).
@@ -52,6 +53,7 @@
 -nifs([build_backward/3]).
 -nifs([graph_reset/1]).
 -nifs([graph_iter_node/1]).
+-nifs([node_compute_params/1]).
 -nifs([create_compute_params/2]).
 -nifs([compute_forward/2]).
 -nifs([graph_dump_dot/2]).
@@ -149,6 +151,10 @@ graph_reset(_Graph) ->
 
 -spec graph_iter_node(my_graph()) -> {ok,my_tensor()}|{error,not_exists}.
 graph_iter_node(_Graph) ->
+    erlang:nif_error("NIF library not loaded").
+
+-spec node_compute_params(my_tensor()) -> [{non_neg_integer(),non_neg_integer()}].
+node_compute_params(_T) ->
     erlang:nif_error("NIF library not loaded").
 
 -spec create_compute_params(my_graph(), {non_neg_integer(),non_neg_integer()}) -> my_compute_params().

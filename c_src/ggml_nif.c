@@ -287,12 +287,19 @@ static ERL_NIF_TERM build_forward(ErlNifEnv* env, int argc, const ERL_NIF_TERM a
         return enif_make_badarg(env);
     }
 
+    ErlDrvSysInfo sysinfo;
+    enif_system_info(&sysinfo, sizeof(sysinfo));
+    enif_fprintf(stdout, "enif_system_info: scheduler_threads=%d\n", sysinfo.scheduler_threads);
     struct my_cgraph* mygraph = enif_alloc_resource(GGML_CGRAPH_RESOURCE_TYPE, sizeof(*mygraph));
     *mygraph = (struct my_cgraph) {
         .output = mytensorf,
-        .current_node = 0
+        .current_node = 0,
+        .cgraph = {
+            .n_threads = sysinfo.scheduler_threads
+        }
     };
-    mygraph->cgraph = ggml_build_forward(mytensorf->tensor);
+    ggml_build_forward_expand(&mygraph->cgraph, mytensorf->tensor);
+    enif_fprintf(stdout, " for cgraph: scheduler_threads=%d\n", mygraph->cgraph.n_threads);
     enif_keep_resource(mytensorf);
     ERL_NIF_TERM cg = enif_make_resource(env, mygraph);
     enif_release_resource(mygraph);
@@ -380,6 +387,21 @@ static ERL_NIF_TERM graph_iter_node(ErlNifEnv* env, int argc, const ERL_NIF_TERM
     }
 
     return enif_make_tuple2(env, ERROR, NOT_EXISTS);
+}
+
+static ERL_NIF_TERM node_compute_params(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]) {
+    struct my_tensor* node;
+    if (!enif_get_resource(env, argv[0], GGML_TENSOR_RESOURCE_TYPE, (void**)&node)) {
+        return enif_make_badarg(env);
+    }
+    int n_tasks = node->tensor->n_tasks;
+    enif_fprintf(stdout, "node->n_tasks: %d\n", node->tensor->n_tasks);
+    ERL_NIF_TERM arr[n_tasks];
+    ERL_NIF_TERM NTASKS = enif_make_int(env, n_tasks);
+    for (int i = 0; i < n_tasks; ++i) {
+        arr[i] = enif_make_tuple2(env, enif_make_int(env, i), NTASKS);
+    }
+    return enif_make_list_from_array(env, arr, n_tasks);
 }
 
 static ERL_NIF_TERM create_compute_params(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]) {
@@ -614,6 +636,7 @@ static ErlNifFunc nif_funcs[] = {
     {"graph_reset", 1, graph_reset},
     {"graph_init_workbuf", 1, graph_init_workbuf},
     {"graph_iter_node", 1, graph_iter_node},
+    {"node_compute_params", 1, node_compute_params},
     {"create_compute_params", 2, create_compute_params},
     {"compute_forward", 2, compute_forward, ERL_NIF_DIRTY_JOB_CPU_BOUND},
     {"graph_compute", 1, graph_compute, ERL_NIF_DIRTY_JOB_CPU_BOUND},

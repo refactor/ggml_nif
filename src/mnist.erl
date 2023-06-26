@@ -76,14 +76,14 @@ model_eval(#{hparams:=Hparams} = Model, Digit) ->
     Probs = ggml_nif:soft_max(Ctx0, Fc2),
     ggml_nif:set_name(Probs, "probs"),
 
-    CGraph = ggml_nif:build_forward(Probs),
-    ggml_nif:graph_compute(CGraph),
-    %{ok, Pid} = cgraph_computer:start_link(Probs),
-    %cgraph_computer:do_compute(Pid),
+    %CGraph = ggml_nif:build_forward(Probs),
+    %ggml_nif:graph_compute(CGraph),
+    {ok, Pid} = cgraph_computer:start_link(Probs),
+    Data = cgraph_computer:do_compute(Pid),
 
     ggml_nif:graph_dump_dot(Probs, "mnist.dot"),
 
-    Data = ggml_nif:get_data(Probs),
+    %Data = ggml_nif:get_data(Probs),
     argmax(Data).
 
 argmax(<<P:32/float, RestBin/binary>>) ->
