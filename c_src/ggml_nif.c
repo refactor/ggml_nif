@@ -387,6 +387,7 @@ static ERL_NIF_TERM graph_iter_node(ErlNifEnv* env, int argc, const ERL_NIF_TERM
         return enif_make_tuple2(env, OK, etensor);
     }
 
+    mygraph->current_node = 0;
     return enif_make_tuple2(env, ERROR, NOT_EXISTS);
 }
 

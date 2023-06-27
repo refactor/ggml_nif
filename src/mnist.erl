@@ -1,9 +1,11 @@
 -module(mnist).
 
+-export([build_network/1]).
 -export([model_load/1]).
 -export([model_eval/2]).
 -export([digit_load/1]).
 -export([digit_render/1]).
+-export([engine_start/1, engine_compute/2]).
 
 -include_lib("kernel/include/file.hrl").
 
@@ -61,12 +63,10 @@ model_load(FN) ->
       n_classes => NHidden2, fc2_weight => Fc2Weight, fc2_bias => Fc2Bias,
       ctx => Ctx}.
 
--spec model_eval(mnist_model(), binary()) -> non_neg_integer().
-model_eval(#{hparams:=Hparams} = Model, Digit) ->
+build_network(#{hparams:=Hparams} = Model) ->
     NInput = maps:get(n_input, Hparams),
     Ctx0 = ggml_nif:init(4 * NInput * 8),
     Input = ggml_nif:new_tensor_f32_1d(Ctx0, NInput),
-    ggml_nif:tensor_load(Input, Digit),
     ggml_nif:set_name(Input, "input"),
 
     ggml_nif:set_param(Input),
@@ -75,11 +75,29 @@ model_eval(#{hparams:=Hparams} = Model, Digit) ->
     Fc2 = ggml_nif:add(Ctx0, ggml_nif:mul_mat(Ctx0, maps:get(fc2_weight, Model), ggml_nif:relu(Ctx0, Fc1)), maps:get(fc2_bias, Model)),
     Probs = ggml_nif:soft_max(Ctx0, Fc2),
     ggml_nif:set_name(Probs, "probs"),
+    {Input, Probs}.
+
+engine_start(Model) ->
+    {Input, Probs} = build_network(Model),
+    {ok, Pid} = cgraph_computer:start_link({Input,Probs}),
+    Pid.
+
+engine_compute(Pid, Digit) ->
+    Data = cgraph_computer:do_compute(Pid, Digit),
+    argmax(Data).
+
+-spec model_eval(mnist_model(), binary()) -> non_neg_integer().
+model_eval(Model, Digit) ->
+    {Input, Probs} = build_network(Model),
+    ggml_nif:tensor_load(Input, Digit),
 
     %CGraph = ggml_nif:build_forward(Probs),
     %ggml_nif:graph_compute(CGraph),
-    {ok, Pid} = cgraph_computer:start_link(Probs),
-    Data = cgraph_computer:do_compute(Pid),
+    {ok, Pid} = cgraph_computer:start_link({Input,Probs}),
+    %Data = cgraph_computer:do_compute(Pid),
+    {Time, Data} = timer:tc(cgraph_computer, do_compute, [Pid], microsecond),
+    io:format("do_compute time=~p(ms)~n", [Time/1000.0]),
+    cgraph_computer:stop(Pid),
 
     ggml_nif:graph_dump_dot(Probs, "mnist.dot"),
 
