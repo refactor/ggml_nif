@@ -15,6 +15,7 @@ do_compute_test() ->
 
     {ok, Pid} = cgraph_computer:start_link({Input,V}),
     Bin = cgraph_computer:do_compute(Pid),
+    cgraph_computer:stop(Pid),
     ?assertNot(is_process_alive(Pid)),
 
     ?assertEqual(500 * 4, size(Bin)),
