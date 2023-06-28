@@ -1,4 +1,4 @@
--module(cgraph_computer_tests).
+-module(model_predictor_tests).
 -include_lib("eunit/include/eunit.hrl").
 
 do_compute_test() ->
@@ -13,9 +13,9 @@ do_compute_test() ->
     ggml_nif:tensor_set_f32(Bias1, 0.0),
     V = ggml_nif:add(Ctx, ggml_nif:mul_mat(Ctx, Weight1, Input), Bias1),
 
-    {ok, Pid} = cgraph_computer:start_link({Input,V}),
-    Bin = cgraph_computer:do_compute(Pid),
-    cgraph_computer:stop(Pid),
+    {ok, Pid} = model_predictor:start_link({Input,V}),
+    Bin = model_predictor:do_compute(Pid),
+    model_predictor:stop(Pid),
     ?assertNot(is_process_alive(Pid)),
 
     ?assertEqual(500 * 4, size(Bin)),

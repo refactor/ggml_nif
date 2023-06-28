@@ -79,11 +79,11 @@ build_network(#{hparams:=Hparams} = Model) ->
 
 engine_start(Model) ->
     {Input, Probs} = build_network(Model),
-    {ok, Pid} = cgraph_computer:start_link({Input,Probs}),
+    {ok, Pid} = model_predictor:start_link({Input,Probs}),
     Pid.
 
 engine_compute(Pid, Digit) ->
-    Data = cgraph_computer:do_compute(Pid, Digit),
+    Data = model_predictor:do_compute(Pid, Digit),
     argmax(Data).
 
 -spec model_eval(mnist_model(), binary()) -> non_neg_integer().
@@ -91,13 +91,11 @@ model_eval(Model, Digit) ->
     {Input, Probs} = build_network(Model),
     ggml_nif:tensor_load(Input, Digit),
 
-    %CGraph = ggml_nif:build_forward(Probs),
-    %ggml_nif:graph_compute(CGraph),
-    {ok, Pid} = cgraph_computer:start_link({Input,Probs}),
-    %Data = cgraph_computer:do_compute(Pid),
-    {Time, Data} = timer:tc(cgraph_computer, do_compute, [Pid], microsecond),
-    io:format("do_compute time=~p(ms)~n", [Time/1000.0]),
-    cgraph_computer:stop(Pid),
+    Data = model_predict_fun:start(Probs),
+    %{ok, Pid} = model_predictor:start_link({Input,Probs}),
+    %{Time, Data} = timer:tc(model_predictor, do_compute, [Pid], microsecond),
+    %io:format("do_compute time=~p(ms)~n", [Time/1000.0]),
+    %model_predictor:stop(Pid),
 
     ggml_nif:graph_dump_dot(Probs, "mnist.dot"),
 

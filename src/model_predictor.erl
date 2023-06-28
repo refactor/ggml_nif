@@ -1,4 +1,4 @@
--module(cgraph_computer).
+-module(model_predictor).
 -behaviour(gen_statem).
 
 -include_lib("kernel/include/logger.hrl").
@@ -31,16 +31,20 @@
 
 %% API.
 
--spec start_link(any()) -> {ok, pid()}.
+-type model() :: { Input::ggml_nif:my_tensor(), Output::ggml_nif:my_tensor() }.
+
+-spec start_link(model()) -> {ok, pid()}.
 start_link(NN) ->
 	gen_statem:start_link(?MODULE, NN, []).
 
 stop(Pid) ->
     gen_statem:stop(Pid).
 
+-spec do_compute(pid()) -> binary().
 do_compute(Pid) ->
     gen_statem:call(Pid, do_compute).
 
+-spec do_compute(pid(), binary()) -> binary().
 do_compute(Pid, NewInput) ->
     gen_statem:call(Pid, {do_compute, NewInput}).
 
@@ -49,6 +53,7 @@ do_compute(Pid, NewInput) ->
 callback_mode() ->
 	[state_functions,state_enter].
 
+-spec init(model()) -> any().
 init({InputTensor, ProbsTensor}) ->
     ?LOG_DEBUG("nthread: ~p", [erlang:system_info(dirty_cpu_schedulers)]),
     Graph = ggml_nif:build_forward(ProbsTensor),
@@ -79,10 +84,7 @@ node_forward(timeout, part_comp_done, #state{cgraph=Graph, from=From, probs=Prob
             {keep_state, StateData#state{current_node=Node}, {timeout,0,do_comp}};
         {error,_} ->
             ?LOG_DEBUG("DONE graph_compute! replying"),
-            %gen_statem:reply(From, ggml_nif:get_data(ProbsTensor)),
             {next_state, graph_waiting, StateData#state{from=undefined}, {reply, From, ggml_nif:get_data(ProbsTensor)}}
-            %{keep_state, StateData#state{from=undefined}, {reply, From, ggml_nif:get_data(ProbsTensor)}}
-%            {stop_and_reply, normal, {reply, From, ggml_nif:get_data(Tensor)}}
     end;
 node_forward(timeout, do_comp, #state{current_node=Node}=StateData) ->
     ComputeParams = ggml_nif:node_compute_params(Node),
